@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claim Inspector - Family Medicine Revenue Cycle Intelligence</title>
+<meta name="description" content="Offline family-medicine coding and RCM workbench: claim scrubber, CPT-Dx-taxonomy match, E/M leveler, modifier advisor, denials, preventive and care-management playbooks.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@700;800&family=Manrope:wght@600;700&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#/" aria-label="Claim Inspector home">
+      <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#111827"/><path d="M13 7h6v6h6v6h-6v6h-6v-6H7v-6h6z" fill="#C7F36B"/><circle cx="21" cy="21" r="5" fill="#111827" stroke="#6D5DFB" stroke-width="2.5"/><path d="m24.5 24.5 3 3" stroke="#6D5DFB" stroke-width="2.5" stroke-linecap="round"/></svg>
+      <span>Claim <em>Inspector</em></span>
+    </a>
+    <form class="search" id="gsearch" role="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="gq" type="search" placeholder="Search CPT, ICD-10, modifier, denial…" aria-label="Search everything" autocomplete="off">
+      <kbd>/</kbd>
+    </form>
+    <button class="btn ghost sm" id="theme" type="button" aria-label="Toggle theme">Theme</button>
+  </div>
+</header>
+<nav class="nav" aria-label="Primary"><div class="wrap" id="nav"></div></nav>
+<main><div class="wrap" id="view"></div></main>
+<footer class="footer">
+  <div class="wrap">
+    <div class="mono" style="color:#8B93A1">Claim Inspector · Family Medicine</div>
+    <p class="small" style="max-width:720px;margin:12px 0 0">A reference and decision-support tool. Code sets, payer rules and Medicare policy change constantly (CPT/HCPCS yearly in January, ICD-10-CM each October, NCCI quarterly, telehealth rules frequently). Always verify against the current AMA CPT book, CMS/MAC policy and your payer contracts. Not legal or clinical advice. Everything runs in your browser; nothing is sent anywhere - still, do not enter patient names or other identifiers.</p>
+  </div>
+</footer>
+<script src="data/cpt.js"></script>
+<script src="data/icd.js"></script>
+<script src="data/modifiers.js"></script>
+<script src="data/reference.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

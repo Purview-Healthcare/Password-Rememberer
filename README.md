@@ -8,3 +8,7 @@ A single-file, offline password keeper. Open `index.html` in a browser.
 - **Export / Import backup** saves the encrypted vault as a JSON file.
 
 Notes: nothing leaves your device. If you forget the master password the data cannot be recovered. Data is per-browser, so use Export to move it between devices.
+
+---
+
+**Also in this repo:** [`claim-inspector/`](claim-inspector/) - a family-medicine revenue-cycle workbench (claim scrubber, CPT/Dx/taxonomy matching, E/M leveler, denials). Open `claim-inspector/index.html`.
