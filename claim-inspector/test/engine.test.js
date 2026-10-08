@@ -53,4 +53,11 @@ t('clean claim', () => {
   const r = E.inspect({ age: 55, sex: 'M', payer: 'commercial', pos: '11', status: 'est', taxonomy: '207Q00000X', dx: ['E11.65', 'I10'], lines: [{ cpt: '99214', ptr: 'AB' }, { cpt: '83036', mods: ['QW'], ptr: 'A' }] });
   assert.strictEqual(r.errs, 0, JSON.stringify(r.issues));
 });
+t('batch parser', () => {
+  const b = E.parseBatch('# c\nA1 | 52 M | commercial | est | 11 | Z00.01 I10 Z23 | 99396 A, 99214-25 B, 90686 C x1, 90471 C\nbad line');
+  assert.strictEqual(b.length, 2); assert.strictEqual(b[0].claim.age, 52); assert.strictEqual(b[0].claim.lines[1].mods, '25');
+  assert.strictEqual(b[0].claim.lines.length, 4); assert(b[1].error);
+  const short = E.parseBatch('X | 70 F | medicare | G0439 | Z00.00 | G0439');
+  assert.strictEqual(short.length, 1);
+});
 console.log(n + ' tests passed');

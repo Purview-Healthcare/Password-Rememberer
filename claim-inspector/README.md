@@ -6,6 +6,7 @@ Offline revenue-cycle workbench for **family medicine**. Open `index.html` in a 
 |---|---|
 | Home | 12-step end-to-end RCM cycle with checklists, pitfalls and KPI targets |
 | Inspect claim | CMS-1500-style scrubber: ~90 rules (modifiers 25/59/X/QW/33/95, NCCI-style pairs, age/sex edits, POS, vaccines, Medicare G-codes, dx pointers, medical necessity, taxonomy scope) with one-click fixes |
+| Batch review | Paste 15-20 claims (one per line) or upload a .txt/.csv; ranked worklist, bulk "safe fixes", CSV export |
 | Match lab | CPT ↔ ICD-10 necessity, service/dx ↔ patient age & sex, dx ↔ provider taxonomy; reverse dx → services |
 | E/M leveler | 2021+ MDM table, time thresholds, new vs. established, 99417 / G2212, G2211 |
 | Modifiers | Decision tree + reference for ~55 modifiers |

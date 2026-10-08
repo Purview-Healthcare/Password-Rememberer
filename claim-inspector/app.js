@@ -47,7 +47,7 @@
 
   /* ---------- routes ---------- */
   const ROUTES = [
-    ['', 'Home', home], ['inspect', 'Inspect claim', inspectPage], ['match', 'Match lab', matchPage], ['em', 'E/M leveler', emPage],
+    ['', 'Home', home], ['inspect', 'Inspect claim', inspectPage], ['batch', 'Batch review', batchPage], ['match', 'Match lab', matchPage], ['em', 'E/M leveler', emPage],
     ['modifiers', 'Modifiers', modPage], ['capture', 'Charge capture', capturePage], ['preventive', 'Preventive', prevPage],
     ['programs', 'Programs', programsPage], ['denials', 'Denials', denialsPage], ['codes', 'Code explorer', codesPage], ['reference', 'Reference', refPage]
   ];
@@ -90,16 +90,17 @@
 
     // Tools
     root.appendChild(h('section', { class: 'block' },
-      h('div', { class: 'sec-head' }, h('div', null, h('div', { class: 'mono' }, 'The workbench'), h('h2', { class: 'h2', style: 'margin-top:8px' }, 'Nine instruments, one purpose.'))),
+      h('div', { class: 'sec-head' }, h('div', null, h('div', { class: 'mono' }, 'The workbench'), h('h2', { class: 'h2', style: 'margin-top:8px' }, 'Ten instruments, one purpose.'))),
       h('div', { class: 'tools' },
         tool('wide', '01 · Inspect', 'Claim scrubber', 'Build a CMS-1500-style claim. 90+ rules check modifiers, bundling, age and sex edits, POS, vaccines, Medicare quirks, dx pointers, medical necessity and provider taxonomy. One-click fixes.', '#/inspect'),
-        tool('', '02 · Match', 'CPT ↔ Dx ↔ Taxonomy', 'Does the service fit the diagnosis, the patient and the provider’s taxonomy?', '#/match'),
-        tool('', '03 · Level', 'E/M leveler', '2021+ MDM table, time thresholds, new vs. established, prolonged services, G2211.', '#/em'),
-        tool('', '04 · Modify', 'Modifier advisor', 'Answer 2-3 questions and get 25 / 59 / XS / 33 / QW / 95 with the why.', '#/modifiers'),
-        tool('', '05 · Capture', 'Missed-charge finder', 'Tick what happened in the room. See every billable code you might be leaving behind.', '#/capture'),
-        tool('', '06 · Prevent', 'Preventive schedules', 'Pediatric through 65+: what to do, the code and the dx.', '#/preventive'),
-        tool('wide', '07 · Programs', 'CCM, TCM, RPM, AWV, APCM, ACP, BHI', 'Eligibility, time rules, documentation checklists and the traps that cause clawbacks.', '#/programs'),
-        tool('', '08 · Recover', 'Denials & appeals', '50+ CARC/RARC with the fix. Generates an appeal letter.', '#/denials'))));
+        tool('', '02 · Batch', 'Batch review', 'Paste 15-20 claims, get a ranked worklist, bulk-apply safe fixes, export results.', '#/batch'),
+        tool('', '03 · Match', 'CPT ↔ Dx ↔ Taxonomy', 'Does the service fit the diagnosis, the patient and the provider’s taxonomy?', '#/match'),
+        tool('', '04 · Level', 'E/M leveler', '2021+ MDM table, time thresholds, new vs. established, prolonged services, G2211.', '#/em'),
+        tool('', '05 · Modify', 'Modifier advisor', 'Answer 2-3 questions and get 25 / 59 / XS / 33 / QW / 95 with the why.', '#/modifiers'),
+        tool('', '06 · Capture', 'Missed-charge finder', 'Tick what happened in the room. See every billable code you might be leaving behind.', '#/capture'),
+        tool('', '07 · Prevent', 'Preventive schedules', 'Pediatric through 65+: what to do, the code and the dx.', '#/preventive'),
+        tool('wide', '08 · Programs', 'CCM, TCM, RPM, AWV, APCM, ACP, BHI', 'Eligibility, time rules, documentation checklists and the traps that cause clawbacks.', '#/programs'),
+        tool('', '09 · Recover', 'Denials & appeals', '50+ CARC/RARC with the fix. Generates an appeal letter.', '#/denials'))));
 
     // Cycle
     root.appendChild(h('section', { class: 'block' },
@@ -240,6 +241,124 @@
     return root;
   }
 
+
+  /* ---------- Batch review ---------- */
+  const BATCH_SAMPLE = [
+    '# label | age sex | payer | new/est | POS | diagnoses | CPT[-mod] [dx pointers] [xUnits], ...',
+    '# use your own account # or initials as the label - no patient names',
+    'A-1001 | 52 M | commercial | est | 11 | Z00.01 I10 Z23 | 99396 A, 99214 B, 90686 C, 90471 C',
+    'A-1002 | 71 F | medicare | est | 11 | M17.11 | 99213 A, 20610 A, J3301 A x4, G2211 A',
+    'A-1003 | 68 F | medicare | est | 11 | Z00.00 Z23 | 99397 A, 90662 B, 90471 B',
+    'A-1004 | 58 M | commercial | est | 11 | E11.65 I10 Z79.84 | 99214 AB, 83036-QW A, 3052F A',
+    'A-1005 | 29 F | commercial | est | 02 | F41.9 | 99214 A',
+    'A-1006 | 45 F | commercial | est | 11 | J02.0 | 99213 A, 87880-QW A',
+    'A-1007 | 63 M | commercial | est | 11 | M54.5 | 99213 A',
+    'A-1008 | 34 F | commercial | est | 11 | Z30.430 | 99213-25 A, 58300 A, J7298 A',
+    'A-1009 | 8 M | medicaid | est | 11 | Z00.129 Z23 | 99393 A, 90460 B, 90715 B',
+    'A-1010 | 77 M | medicare | est | 11 | E11.22 N18.32 I12.9 | 99215 ABC, 99417 A',
+    'A-1011 | 40 F | commercial | new | 11 | N92.1 | 99213 A, 77067 A',
+    'A-1012 | 62 M | commercial | est | 11 | H61.23 | 99212-25 A, 69210 A',
+    'A-1013 | 55 F | commercial | est | 11 | E78.5 | 99214 A, 80061 A, 36415 A',
+    'A-1014 | 66 M | medicare | est | 11 | Z00.00 | G0439 A, 99214 A',
+    'A-1015 | 33 M | commercial | est | 11 | S61.411A | 12001 A, 99213-25 A, 90715 A'
+  ].join('\n');
+  function batchPage() {
+    const st = store.get('batch', { text: BATCH_SAMPLE });
+    let filter = 'All', results = [], openIx = {};
+    const ta = h('textarea', { class: 'in mono-in', rows: 12, spellcheck: 'false', style: 'font-size:13px;text-transform:none;line-height:1.55;white-space:pre;overflow:auto', 'aria-label': 'Claims, one per line' });
+    ta.value = st.text;
+    const summary = h('div', null), list = h('div', null);
+    const SAFE = ['addMod', 'removeMod', 'units', 'ptr', 'toEst', 'toNew', 'swapAdmin'];
+    function analyze() {
+      st.text = ta.value; store.set('batch', st);
+      results = E.parseBatch(ta.value).map((p) => p.error ? p : Object.assign(p, { res: E.inspect(p.claim) }));
+      render();
+    }
+    function fixAll() {
+      let n = 0;
+      results.forEach((p) => {
+        if (!p.claim) return;
+        for (let pass = 0; pass < 3; pass++) {
+          const r = E.inspect(p.claim);
+          const fx = r.issues.filter((i) => i.fix && SAFE.includes(i.fix.type));
+          if (!fx.length) break;
+          fx.forEach((i) => { p.claim = E.applyFix(p.claim, i); n++; });
+        }
+      });
+      // write fixed claims back into the text
+      ta.value = results.map((p) => p.claim ? serialize(p) : p.raw).join('\n');
+      analyze(); toast(n + ' safe fixes applied');
+    }
+    function serialize(p) {
+      const c = p.claim;
+      return [p.label, (c.age + ' ' + c.sex).trim(), c.payer, c.status, c.pos, c.dx.join(' '),
+        c.lines.map((l) => (l.cpt + (l.mods ? '-' + String(l.mods).trim().replace(/\s+/g, '-') : '') + ' ' + l.ptr + (+l.units > 1 ? ' x' + l.units : ''))).join(', ')].join(' | ');
+    }
+    function csv() {
+      const rows = [['claim', 'score', 'errors', 'warnings', 'notes', 'top_issue']].concat(results.map((p) => p.res ? [p.label, p.res.score, p.res.errs, p.res.warns, p.res.infos, (p.res.issues.find((i) => i.sev === 'error') || p.res.issues.find((i) => i.sev === 'warn') || { msg: '' }).msg] : [p.label, '', '', '', '', p.error]));
+      return rows.map((r) => r.map((x) => '"' + String(x).replace(/"/g, '""') + '"').join(',')).join('\n');
+    }
+    function render() {
+      const ok = results.filter((p) => p.res);
+      const bad = ok.filter((p) => p.res.errs), warn = ok.filter((p) => !p.res.errs && p.res.warns), clean = ok.filter((p) => !p.res.errs && !p.res.warns);
+      const fixable = ok.reduce((n, p) => n + p.res.issues.filter((i) => i.fix && SAFE.includes(i.fix.type)).length, 0);
+      summary.innerHTML = '';
+      summary.appendChild(h('div', { class: 'card dark' },
+        h('div', { class: 'row between', style: 'align-items:flex-end' },
+          h('div', { class: 'row', style: 'gap:40px;align-items:flex-end' },
+            h('div', null, h('div', { class: 'score good' }, String(ok.length)), h('div', { class: 'mono' }, 'claims reviewed')),
+            h('div', null, h('div', { class: 'score', style: 'font-size:48px;color:var(--red)' }, String(bad.length)), h('div', { class: 'mono' }, 'blocked by errors')),
+            h('div', null, h('div', { class: 'score', style: 'font-size:48px;color:#E5A93C' }, String(warn.length)), h('div', { class: 'mono' }, 'need a look')),
+            h('div', null, h('div', { class: 'score', style: 'font-size:48px;color:var(--lime)' }, String(clean.length)), h('div', { class: 'mono' }, 'ready to submit'))),
+          h('div', { class: 'row' },
+            h('button', { class: 'btn lime', disabled: fixable === 0, onclick: fixAll }, 'Apply ' + fixable + ' safe fixes'),
+            h('button', { class: 'btn ghost', style: 'color:#fff;border-color:#2B3445', onclick: () => copy(csv()) }, 'Copy results CSV'),
+            h('button', { class: 'btn ghost', style: 'color:#fff;border-color:#2B3445', onclick: () => window.print() }, 'Print')))));
+      list.innerHTML = '';
+      list.appendChild(h('div', { class: 'chips', style: 'margin:32px 0 16px' }, [['All', results.length], ['Errors', bad.length], ['Warnings', warn.length], ['Ready', clean.length]].map((f) => h('button', { class: 'chip', 'aria-pressed': filter === f[0], onclick: () => { filter = f[0]; render(); } }, f[0] + ' · ' + f[1]))));
+      const rank = (p) => !p.res ? -1 : p.res.errs * 100 + p.res.warns * 10 + p.res.infos;
+      const shown = results.filter((p) => filter === 'All' || (!p.res && filter === 'Errors') || (p.res && ((filter === 'Errors' && p.res.errs) || (filter === 'Warnings' && !p.res.errs && p.res.warns) || (filter === 'Ready' && !p.res.errs && !p.res.warns)))).sort((a, b) => rank(b) - rank(a));
+      const card = h('div', { class: 'card', style: 'padding:0;overflow:hidden' });
+      shown.forEach((p) => {
+        if (!p.res) { card.appendChild(h('div', { class: 'issue', style: 'padding:16px 24px' }, h('span', { class: 'dot error' }), h('div', null, h('b', null, p.label), h('p', { class: 'small' }, p.error)))); return; }
+        const r = p.res, top = r.issues.find((i) => i.sev === 'error') || r.issues.find((i) => i.sev === 'warn') || r.issues[0];
+        const open = !!openIx[p.label];
+        const row = h('div', { style: 'border-top:1px solid var(--border)' });
+        row.appendChild(h('button', { style: 'all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:88px 64px 1fr auto;gap:16px;align-items:center;width:100%;padding:16px 24px', 'aria-expanded': String(open), onclick: () => { openIx[p.label] = !open; render(); } },
+          h('span', { class: 'code' }, p.label),
+          h('span', { class: 'h3', style: 'color:' + (r.errs ? 'var(--red)' : r.warns ? 'var(--amber)' : 'var(--violet)') }, String(r.score)),
+          h('span', { class: 'small' }, p.claim.lines.map((l) => l.cpt + (l.mods ? '-' + l.mods.replace(/\s+/g, '-') : '')).join('  '), h('div', { class: 'muted xs' }, top ? top.msg.slice(0, 120) + (top.msg.length > 120 ? '…' : '') : 'No issues')),
+          h('span', { class: 'row', style: 'gap:6px' }, r.errs ? h('span', { class: 'pill red' }, r.errs + ' err') : null, r.warns ? h('span', { class: 'pill amber' }, r.warns + ' warn') : null, !r.errs && !r.warns ? h('span', { class: 'pill lime' }, 'ready') : null)));
+        if (open) {
+          const body = h('div', { style: 'padding:0 24px 24px 24px;background:var(--soft)' });
+          const order = { error: 0, warn: 1, info: 2 };
+          r.issues.slice().sort((a, b) => order[a.sev] - order[b.sev]).forEach((it) => body.appendChild(h('div', { class: 'issue' }, h('span', { class: 'dot ' + it.sev }), h('div', null, h('p', null, it.msg), h('div', { class: 'meta' }, h('span', { class: 'mono' }, it.rule + (it.line != null ? ' · line ' + (it.line + 1) : '')),
+            it.fix && SAFE.includes(it.fix.type) && h('button', { class: 'btn sm primary', onclick: () => { p.claim = E.applyFix(p.claim, it); ta.value = results.map((x) => x.claim ? serialize(x) : x.raw).join('\n'); analyze(); } }, 'Apply fix'))))));
+          body.appendChild(h('div', { class: 'row', style: 'margin-top:16px' }, h('button', { class: 'btn ghost sm', onclick: () => { store.set('claim', p.claim); location.hash = '#/inspect'; } }, 'Open in full Inspector →')));
+          row.appendChild(body);
+        }
+        card.appendChild(row);
+      });
+      if (!shown.length) card.appendChild(h('p', { class: 'small muted', style: 'padding:24px' }, 'Nothing in this filter.'));
+      list.appendChild(card);
+    }
+    ta.addEventListener('input', () => { clearTimeout(ta._t); ta._t = setTimeout(analyze, 250); });
+    const file = h('input', { type: 'file', accept: '.txt,.csv,.tsv', style: 'display:none', onchange: (e) => { const f = e.target.files[0]; if (!f) return; f.text().then((t) => { ta.value = t; analyze(); }); } });
+    const root = h('div', null,
+      pageHead('02 · Batch', 'Fifteen claims. One pass.', 'Paste the day’s claims, one per line. You get a ranked worklist - blocked claims first - with a one-click bulk fix for the safe corrections (modifier 25, QW, units, new/established code, Medicare vaccine admin codes) and an export for your biller.'),
+      h('div', { class: 'grid' },
+        h('div', { class: 'c8' }, h('div', { class: 'card' },
+          h('div', { class: 'row between', style: 'margin-bottom:12px' }, h('h3', { class: 'h3' }, 'Claims'), h('div', { class: 'row' },
+            h('button', { class: 'btn ghost sm', onclick: () => { ta.value = BATCH_SAMPLE; analyze(); } }, 'Load sample day'), h('button', { class: 'btn ghost sm', onclick: () => file.click() }, 'Upload .txt/.csv'), h('button', { class: 'btn ghost sm', onclick: () => { ta.value = ''; analyze(); } }, 'Clear'), file)),
+          ta)),
+        h('div', { class: 'c4' }, h('div', { class: 'card flat' }, h('div', { class: 'mono' }, 'Line format'),
+          h('p', { class: 'code', style: 'font-size:12px;margin:8px 0;word-break:break-word' }, 'label | 52 M | commercial | est | 11 | Z00.01 I10 Z23 | 99396 A, 99214-25 B, 90471 C x1'),
+          h('ul', { class: 'plain dash' }, ['Fields: label, age + sex, payer (commercial / medicare / medicaid), new or est, POS, diagnoses, services', 'Service: CPT, optional -modifiers, dx pointers (letters = order of the diagnoses), xUnits', 'Short forms work: label | dx | services', 'Use account numbers or initials - never patient names'].map((x) => h('li', null, x)))))),
+      h('div', { style: 'margin-top:32px' }, summary, list));
+    analyze();
+    return root;
+  }
+
   /* ---------- Match lab ---------- */
   function matchPage() {
     const st = store.get('match', { cpt: '83036', dx: 'E11.9, I10', age: 58, sex: 'M', tax: '207Q00000X' });
@@ -292,7 +411,7 @@
       explore.appendChild(box);
     }
     const root = h('div', null,
-      pageHead('02 · Match lab', 'Does the code fit the diagnosis, the patient and the provider?', 'Three-way check: CPT ↔ ICD-10 medical necessity, service/dx ↔ patient age & sex, and diagnosis ↔ taxonomy scope. Based on typical coverage logic, not a specific LCD - always confirm payer policy.'),
+      pageHead('03 · Match lab', 'Does the code fit the diagnosis, the patient and the provider?', 'Three-way check: CPT ↔ ICD-10 medical necessity, service/dx ↔ patient age & sex, and diagnosis ↔ taxonomy scope. Based on typical coverage logic, not a specific LCD - always confirm payer policy.'),
       h('div', { class: 'grid' },
         h('div', { class: 'c5' }, h('div', { class: 'card sticky' }, h('h3', { class: 'h3', style: 'margin-bottom:16px' }, 'Inputs'),
           h('div', { class: 'stack' },
@@ -336,7 +455,7 @@
     }
     const levelSel = (key, arr) => h('div', { class: 'stack-sm' }, arr.map((t, i) => h('label', { class: 'check' }, h('input', { type: 'radio', name: 'm' + key, checked: +st[key] === i, onchange: () => { st[key] = i; run(); } }), h('span', null, t))));
     const root = h('div', null,
-      pageHead('03 · Level', 'Level the visit by MDM or by time.', 'The 2021+ office E/M rules. Choose the level supported in each MDM element - two of three set the level. Or enter total provider time on the date of the encounter.'),
+      pageHead('04 · Level', 'Level the visit by MDM or by time.', 'The 2021+ office E/M rules. Choose the level supported in each MDM element - two of three set the level. Or enter total provider time on the date of the encounter.'),
       h('div', { class: 'grid' },
         h('div', { class: 'c7 stack-lg' },
           h('div', { class: 'card' }, h('h3', { class: 'h3' }, 'Patient'),
@@ -384,7 +503,7 @@
           m.doc && h('p', { class: 'small', style: 'margin:4px 0 0' }, h('span', { class: 'mono inline' }, 'Document · '), m.doc), m.payer && h('p', { class: 'small', style: 'margin:4px 0 0' }, h('span', { class: 'mono inline' }, 'Payer · '), m.payer)))));
     }
     const root = h('div', null,
-      pageHead('04 · Modify', 'Which modifier, and why.', 'Walk the decision tree for the common family-medicine situations, then browse the full reference. Modifier use is payer-specific - the reasoning here is the conservative default.'),
+      pageHead('05 · Modify', 'Which modifier, and why.', 'Walk the decision tree for the common family-medicine situations, then browse the full reference. Modifier use is payer-specific - the reasoning here is the conservative default.'),
       h('div', { class: 'grid' },
         h('div', { class: 'c5' }, h('div', { class: 'card sticky' }, wiz)),
         h('div', { class: 'c7' }, h('div', { class: 'row between', style: 'margin-bottom:16px' }, h('h3', { class: 'h3' }, 'Reference'), h('div', { style: 'width:260px' }, inp('', (v) => { q = v; fill(); }, { placeholder: 'Filter modifiers…', type: 'search' }))), list)));
@@ -411,7 +530,7 @@
     }
     const boxes = CI.CAPTURE.map((c) => h('label', { class: 'check', style: 'padding:12px 16px;border:1px solid var(--border);border-radius:10px;background:var(--surface)' }, h('input', { type: 'checkbox', checked: !!sel_[c.id], onchange: (e) => { sel_[c.id] = e.target.checked; run(); } }), h('span', null, c.label)));
     const root = h('div', null,
-      pageHead('05 · Capture', 'What did you do that nobody billed?', 'Tick the things that happened in the room. The finder lists every code worth considering, with the modifier and dx that usually goes with it.'),
+      pageHead('06 · Capture', 'What did you do that nobody billed?', 'Tick the things that happened in the room. The finder lists every code worth considering, with the modifier and dx that usually goes with it.'),
       h('div', { class: 'grid' }, h('div', { class: 'c7' }, h('div', { style: 'display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))' }, boxes)), h('div', { class: 'c5' }, h('div', { class: 'sticky' }, out))));
     run();
     return root;
@@ -432,14 +551,14 @@
         h('div', { class: 'c6' }, h('div', { class: 'card flat' }, h('div', { class: 'mono' }, 'Preventive + problem visit'), h('p', { class: 'small' }, 'Bill the age-matched preventive code with Z00.00/Z00.01 and the problem-oriented E/M with modifier 25 and the problem dx. Document the problem work separately. Expect the patient to owe cost-sharing on the E/M.'))),
         h('div', { class: 'c6' }, h('div', { class: 'card flat' }, h('div', { class: 'mono' }, 'Modifier 33 & zero cost-share'), h('p', { class: 'small' }, 'For commercial ACA preventive services whose code is not obviously preventive (e.g., 96127, 99401-99404, 81528), modifier 33 or the preventive Z-dx on the line signals no cost-share. Payers differ - confirm with each plan.')))));
     }
-    const root = h('div', null, pageHead('06 · Preventive', 'Preventive care, by age.', 'Common US guideline-based services (USPSTF / Bright Futures / ACIP) with the codes that carry them. Guidelines update; confirm with the current source.'), host);
+    const root = h('div', null, pageHead('07 · Preventive', 'Preventive care, by age.', 'Common US guideline-based services (USPSTF / Bright Futures / ACIP) with the codes that carry them. Guidelines update; confirm with the current source.'), host);
     fill();
     return root;
   }
 
   /* ---------- Programs ---------- */
   function programsPage() {
-    const root = h('div', null, pageHead('07 · Programs', 'Care management and the revenue that hides in it.', 'Eligibility, time and documentation rules for the programs family practices most often under-bill, plus procedure documentation checklists.'));
+    const root = h('div', null, pageHead('08 · Programs', 'Care management and the revenue that hides in it.', 'Eligibility, time and documentation rules for the programs family practices most often under-bill, plus procedure documentation checklists.'));
     const grid = h('div', { class: 'grid' });
     CI.PROGRAMS.forEach((p, i) => grid.appendChild(h('div', { class: i % 5 === 0 ? 'c8' : 'c4' }, h('div', { class: 'card' + (i % 5 === 0 ? ' dark' : '') , style: 'height:100%' },
       h('div', { class: 'mono' }, p.codes), h('h3', { class: 'h3', style: 'margin:8px 0 4px' }, p.t), h('div', { class: 'small muted' }, p.who),
@@ -479,7 +598,7 @@
     }
     const f = (label, key, props) => field(label, inp(ap[key], (v) => { ap[key] = v; gen(); }, props));
     const root = h('div', null,
-      pageHead('08 · Recover', 'Denials, decoded.', 'CARC/RARC meanings with the fix and the prevention. Filter, search, and generate an appeal letter from the denial code.'),
+      pageHead('09 · Recover', 'Denials, decoded.', 'CARC/RARC meanings with the fix and the prevention. Filter, search, and generate an appeal letter from the denial code.'),
       h('div', { class: 'row between', style: 'margin-bottom:16px' }, chips, h('div', { style: 'width:280px' }, inp('', (v) => { q = v; fill(); }, { type: 'search', placeholder: 'Search code or keyword…' }))), tbl,
       h('section', { class: 'block grid' },
         h('div', { class: 'c5' }, h('div', { class: 'mono' }, 'Appeal letter'), h('h2', { class: 'h2', style: 'margin:8px 0 24px' }, 'Draft the appeal'),
@@ -529,7 +648,7 @@
       }
       host.appendChild(table);
     }
-    const root = h('div', null, pageHead('09 · Explorer', 'Every code, with context.', 'Browse the built-in family-medicine code set: ' + Object.keys(CI.CPT).length + ' procedure codes, ' + Object.keys(CI.ICD).length + ' diagnoses with specificity tips, taxonomies, and the dx families used for medical-necessity matching.'),
+    const root = h('div', null, pageHead('10 · Explorer', 'Every code, with context.', 'Browse the built-in family-medicine code set: ' + Object.keys(CI.CPT).length + ' procedure codes, ' + Object.keys(CI.ICD).length + ' diagnoses with specificity tips, taxonomies, and the dx families used for medical-necessity matching.'),
       h('div', { style: 'max-width:420px;margin-bottom:24px' }, input), host);
     fill();
     return root;
@@ -537,7 +656,7 @@
 
   /* ---------- Reference ---------- */
   function refPage() {
-    return h('div', null, pageHead('10 · Reference', 'The desk reference.', 'Benchmarks, form fields, place-of-service codes and quality measures.'),
+    return h('div', null, pageHead('11 · Reference', 'The desk reference.', 'Benchmarks, form fields, place-of-service codes and quality measures.'),
       h('section', null, h('div', { class: 'sec-head' }, h('h2', { class: 'h2' }, 'Family-medicine RCM benchmarks')),
         h('div', { class: 'card scroll-x' }, h('table', { class: 'table' }, h('thead', null, h('tr', null, ['Metric', 'Target', 'Definition'].map((x) => h('th', null, x)))), h('tbody', null, CI.KPI.map((r) => h('tr', null, h('td', null, h('b', null, r[0])), h('td', { class: 'code' }, r[1]), h('td', null, r[2]))))))),
       h('section', { class: 'block' }, h('div', { class: 'sec-head' }, h('h2', { class: 'h2' }, 'Quality measures & CPT II')),

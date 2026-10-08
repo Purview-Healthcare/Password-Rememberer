@@ -50,7 +50,7 @@
     const dxRaw = (claim.dx || []).map((d) => String(d || '').trim()).filter(Boolean);
     const dxN = dxRaw.map(normDx);
     const lines = (claim.lines || []).map((l, i) => ({
-      i, cpt: normCpt(l.cpt), mods: (l.mods || []).map((m) => String(m).toUpperCase().trim()).filter(Boolean),
+      i, cpt: normCpt(l.cpt), mods: (Array.isArray(l.mods) ? l.mods : String(l.mods || '').split(/[\s,-]+/)).map((m) => String(m).toUpperCase().trim()).filter(Boolean),
       ptr: String(l.ptr || '').toUpperCase().replace(/[^A-L]/g, ''), units: l.units === '' || l.units == null ? 1 : +l.units, charge: l.charge
     })).filter((l) => l.cpt);
     const idxOf = (fn) => { const f = lines.find(fn); return f ? f.i : null; };
@@ -436,6 +436,34 @@
   }
   const EM_BY_LEVEL = { new: ['99202', '99203', '99204', '99205'], est: ['99212', '99213', '99214', '99215'] };
 
-  CI.engine = { inspect, applyFix, matchCptDx, cptsForDx, supportingDx, timeEM, mdmLevel, EM_BY_LEVEL, normDx, fmtDx, normCpt, famMatch };
+
+  /* ---------- Batch parsing ----------
+     One claim per line:  label | age sex | payer | status | pos | dx dx dx | cpt[-mod-mod] [ptrs] [xUnits], ...
+     Only label, dx and lines are required; blanks fall back to defaults. Lines starting with # are ignored. */
+  function parseBatch(text) {
+    const out = [];
+    String(text || '').split(/\r?\n/).forEach((raw, n) => {
+      const line = raw.trim();
+      if (!line || line[0] === '#') return;
+      const f = line.split('|').map((s) => s.trim());
+      if (f.length < 3) { out.push({ label: 'Line ' + (n + 1), error: 'Needs at least: label | demographics | ... | dx | lines (use | between fields).', raw }); return; }
+      const [label, demo, payer, status, pos, dx, svc] = f.length >= 7 ? f : f.length === 3 ? [f[0], '', '', '', '', f[1], f[2]] : f.length === 4 ? [f[0], f[1], '', '', '', f[2], f[3]] : f.length === 5 ? [f[0], f[1], f[2], '', '', f[3], f[4]] : [f[0], f[1], f[2], f[3], '', f[4], f[5]];
+      const dm = /(\d{1,3})\s*([MFmf])?/.exec(demo || '') || [];
+      const pm = String(payer || '').toLowerCase();
+      const payerV = /mcr|medicare/.test(pm) ? 'medicare' : /mcd|medicaid/.test(pm) ? 'medicaid' : /tri/.test(pm) ? 'tricare' : /self|cash/.test(pm) ? 'selfpay' : 'commercial';
+      const st = String(status || '').toLowerCase();
+      const lines = String(svc || '').split(',').map((t) => t.trim()).filter(Boolean).map((t) => {
+        const parts = t.split(/\s+/);
+        const head = parts[0].toUpperCase().split('-');
+        let ptr = 'A', units = 1;
+        parts.slice(1).forEach((p) => { const u = /^x(\d+)$/i.exec(p); if (u) units = +u[1]; else ptr = p.toUpperCase(); });
+        return { cpt: head[0], mods: head.slice(1).join(' '), ptr, units, charge: '' };
+      });
+      out.push({ label, raw, claim: { age: dm[1] ? +dm[1] : '', sex: dm[2] ? dm[2].toUpperCase() : '', payer: payerV, status: /^n/.test(st) ? 'new' : /^e/.test(st) ? 'est' : 'est', pos: (pos || '11').replace(/\D/g, '').padStart(2, '0') || '11', taxonomy: '207Q00000X', dos: new Date().toISOString().slice(0, 10), dx: String(dx || '').split(/[\s,]+/).filter(Boolean), lines } });
+    });
+    return out;
+  }
+
+  CI.engine = { parseBatch, inspect, applyFix, matchCptDx, cptsForDx, supportingDx, timeEM, mdmLevel, EM_BY_LEVEL, normDx, fmtDx, normCpt, famMatch };
   if (typeof module !== 'undefined' && module.exports) module.exports = CI;
 })(typeof window !== 'undefined' ? window : globalThis);
