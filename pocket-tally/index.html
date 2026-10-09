@@ -1,0 +1,1006 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f3f6f3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1412" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Tally">
+<meta name="description" content="Say what you bought. Pocket Tally saves the item and the amount and shows where your money goes.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<!-- ARTIFACT-START -->
+<title>Pocket Tally</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: one column, thumb-first. The capture card sits at the top of Add; the tab bar is fixed at the bottom. */
+:root {
+  --bg: #f3f6f3;
+  --surface: #ffffff;
+  --surface-2: #e8eee9;
+  --ink: #15201a;
+  --ink-2: #55635b;
+  --ink-3: #7c8881;
+  --line: #dbe3dd;
+  --accent: #1f7a5c;
+  --accent-ink: #ffffff;
+  --accent-soft: #d8ede2;
+  --danger: #b5431c;
+  --danger-soft: #f7e4dc;
+  --toast-bg: #15201a;
+  --toast-fg: #f3f6f3;
+  --toast-action: #8fe0bf;
+  --cat-transport: #2a78d6;
+  --cat-food: #eb6834;
+  --cat-groceries: #1baf7a;
+  --cat-fun: #eda100;
+  --cat-shopping: #e87ba4;
+  --cat-home: #008300;
+  --cat-bills: #4a3aa7;
+  --cat-health: #e34948;
+  --cat-other: #898781;
+  --font-ui: "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --radius: 14px;
+  --shadow: 0 1px 2px rgba(21, 32, 26, 0.06), 0 10px 28px -14px rgba(21, 32, 26, 0.22);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1412; --surface: #1a211d; --surface-2: #242d28; --ink: #e9eeea; --ink-2: #aab5ae; --ink-3: #7d887f;
+    --line: #2a342e; --accent: #5fd3a8; --accent-ink: #0f1412; --accent-soft: #1d3a2f; --danger: #f0905f; --danger-soft: #3b2419;
+    --toast-bg: #e9eeea; --toast-fg: #0f1412; --toast-action: #1f7a5c;
+    --cat-transport: #3987e5; --cat-food: #d95926; --cat-groceries: #199e70; --cat-fun: #c98500; --cat-shopping: #d55181;
+    --cat-home: #008300; --cat-bills: #9085e9; --cat-health: #e66767; --cat-other: #898781;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px -14px rgba(0, 0, 0, 0.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1412; --surface: #1a211d; --surface-2: #242d28; --ink: #e9eeea; --ink-2: #aab5ae; --ink-3: #7d887f;
+  --line: #2a342e; --accent: #5fd3a8; --accent-ink: #0f1412; --accent-soft: #1d3a2f; --danger: #f0905f; --danger-soft: #3b2419;
+  --toast-bg: #e9eeea; --toast-fg: #0f1412; --toast-action: #1f7a5c;
+  --cat-transport: #3987e5; --cat-food: #d95926; --cat-groceries: #199e70; --cat-fun: #c98500; --cat-shopping: #d55181;
+  --cat-home: #008300; --cat-bills: #9085e9; --cat-health: #e66767; --cat-other: #898781;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px -14px rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); background: var(--bg); -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(--font-ui); -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+h2 { font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+
+.app { max-width: 560px; margin: 0 auto; padding-inline: 16px; }
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); display: flex; align-items: center; justify-content: space-between; padding-block: 12px 8px; }
+.brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.brand svg { width: 28px; height: 28px; border-radius: 7px; }
+.iconbtn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; color: var(--ink-2); }
+.iconbtn svg { width: 20px; height: 20px; }
+main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+.view { display: grid; gap: 20px; }
+
+/* hero */
+.hero { display: grid; gap: 2px; padding-block: 6px 4px; }
+.eyebrow { font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.hero-amount { font-family: var(--font-num); font-weight: 600; font-size: 40px; line-height: 1.1; letter-spacing: -0.02em; }
+.hero-sub { color: var(--ink-2); font-size: 14px; }
+.hero-row { display: flex; flex-wrap: wrap; gap: 16px 24px; margin-top: 10px; }
+.stat { display: grid; gap: 2px; }
+.stat b { font-family: var(--font-num); font-weight: 600; font-size: 18px; }
+.stat span { font-size: 12px; color: var(--ink-3); }
+.delta { font-size: 13px; color: var(--ink-2); }
+
+/* capture */
+.capture { background: var(--surface); border-radius: 20px; padding: 20px 16px 16px; box-shadow: var(--shadow); display: grid; gap: 12px; justify-items: center; }
+.mic { position: relative; width: 92px; height: 92px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; transition: transform 0.15s ease; }
+.mic:active { transform: scale(0.96); }
+.mic svg { width: 40px; height: 40px; }
+.mic.listening { background: var(--danger); color: #fff; }
+.mic.listening::before { content: ""; position: absolute; inset: -8px; border-radius: 50%; border: 3px solid var(--danger); opacity: 0.6; animation: pulse 1.2s ease-out infinite; }
+@keyframes pulse { 0% { transform: scale(0.9); opacity: 0.7; } 100% { transform: scale(1.35); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .mic.listening::before { animation: none; } .mic { transition: none; } }
+.mic-status { font-size: 14px; color: var(--ink-2); text-align: center; min-height: 1.4em; }
+.transcript { width: 100%; min-height: 1.5em; text-align: center; font-size: 18px; font-weight: 500; color: var(--ink); overflow-wrap: anywhere; }
+.transcript.interim { color: var(--ink-3); font-weight: 400; }
+.typeform { display: flex; gap: 8px; width: 100%; }
+.typeform input { flex: 1; min-width: 0; height: 46px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.typeform input::placeholder { color: var(--ink-3); }
+.btn { height: 46px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 600; white-space: nowrap; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { color: var(--danger); border-color: var(--danger-soft); background: var(--danger-soft); }
+.btn.small { height: 36px; padding: 0 12px; font-size: 14px; }
+.hint { width: 100%; font-size: 14px; color: var(--ink-2); background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
+.examples { width: 100%; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.examples button { border: 0; background: var(--surface-2); color: var(--ink-2); border-radius: 999px; padding: 6px 11px; font-size: 13px; }
+
+/* pending card */
+.pending { width: 100%; background: var(--accent-soft); border-radius: 14px; padding: 12px; display: grid; gap: 10px; }
+.pending p { margin: 0; font-size: 14px; color: var(--ink); }
+.field { display: grid; gap: 4px; }
+.field label { font-size: 12px; font-weight: 600; color: var(--ink-3); letter-spacing: 0.04em; text-transform: uppercase; }
+.field input, .field select, .field textarea { width: 100%; height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.field textarea { height: auto; padding: 10px 12px; resize: vertical; }
+.field input.num { font-size: 18px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.actions .spacer { flex: 1; }
+
+/* chips */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 999px; border: 1px solid transparent; background: var(--surface-2); color: var(--ink-2); font-size: 13px; font-weight: 500; }
+.chip.active { background: var(--accent-soft); color: var(--ink); border-color: var(--accent); }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--cat-other); }
+.dot[data-cat="food"], .dotc-food { background: var(--cat-food); }
+.dot[data-cat="groceries"], .dotc-groceries { background: var(--cat-groceries); }
+.dot[data-cat="transport"], .dotc-transport { background: var(--cat-transport); }
+.dot[data-cat="bills"], .dotc-bills { background: var(--cat-bills); }
+.dot[data-cat="shopping"], .dotc-shopping { background: var(--cat-shopping); }
+.dot[data-cat="health"], .dotc-health { background: var(--cat-health); }
+.dot[data-cat="fun"], .dotc-fun { background: var(--cat-fun); }
+.dot[data-cat="home"], .dotc-home { background: var(--cat-home); }
+.dot[data-cat="other"], .dotc-other { background: var(--cat-other); }
+
+/* entries */
+.entries { list-style: none; margin: 0; padding: 0; }
+.entry { display: flex; align-items: center; gap: 12px; padding-block: 11px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.entry:last-child { border-bottom: 0; }
+.entry-main { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.entry-item { font-weight: 600; overflow-wrap: anywhere; }
+.entry-meta { font-size: 13px; color: var(--ink-3); }
+.entry-amt { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.section { display: grid; gap: 8px; }
+.day-head { display: flex; justify-content: space-between; align-items: baseline; padding-block: 14px 4px; }
+.day-head h3 { font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.day-total { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 14px; color: var(--ink-2); }
+.empty { color: var(--ink-2); font-size: 14px; background: var(--surface); border-radius: var(--radius); padding: 16px; }
+.empty b { color: var(--ink); }
+
+/* search */
+.search { width: 100%; height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+
+/* segmented */
+.seg { display: flex; gap: 2px; background: var(--surface-2); border-radius: 12px; padding: 3px; }
+.seg button { flex: 1; border: 0; background: transparent; padding: 8px 4px; border-radius: 10px; color: var(--ink-2); font-weight: 500; font-size: 14px; }
+.seg button.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+/* category rows */
+.card { background: var(--surface); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); display: grid; gap: 10px; }
+.catrow { display: grid; grid-template-columns: 10px 1fr auto; gap: 6px 10px; align-items: center; padding-block: 6px; }
+.catrow .label { font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.catrow .val { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-weight: 600; }
+.catrow .pct { color: var(--ink-3); font-size: 12px; font-family: var(--font-ui); margin-left: 6px; }
+.catbar { grid-column: 2 / 4; height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+.catbar i { display: block; height: 100%; border-radius: 0 4px 4px 0; }
+
+/* day chart */
+.daychart { width: 100%; height: auto; display: block; overflow: visible; }
+.daychart .bar { fill: var(--accent); }
+.daychart .bar.today { fill: var(--accent); stroke: var(--ink); stroke-width: 1.5; }
+.daychart .hit { fill: transparent; }
+.daychart .grid { stroke: var(--line); stroke-width: 1; }
+.daychart .axis { stroke: var(--ink-3); stroke-width: 1; }
+.daychart text { fill: var(--ink-3); font-family: var(--font-ui); font-size: 10px; }
+.daychart .ylab { font-family: var(--font-num); }
+.chartwrap { position: relative; }
+.tip { position: absolute; pointer-events: none; background: var(--toast-bg); color: var(--toast-fg); font-size: 12px; padding: 5px 8px; border-radius: 8px; white-space: nowrap; transform: translate(-50%, -100%); z-index: 2; }
+.tip b { font-family: var(--font-num); }
+.toplist { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.toplist li { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.toplist li span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toplist small { color: var(--ink-3); margin-left: 6px; }
+
+/* tabs */
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.tabs-inner { max-width: 560px; margin: 0 auto; display: flex; }
+.tab { flex: 1; height: 60px; border: 0; background: transparent; color: var(--ink-3); display: grid; justify-items: center; align-content: center; gap: 3px; font-size: 12px; font-weight: 600; }
+.tab svg { width: 22px; height: 22px; }
+.tab.active { color: var(--accent); }
+
+/* sheets */
+.sheet { position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-end; justify-content: center; background: rgba(0, 0, 0, 0.4); }
+.panel { width: 100%; max-width: 560px; max-height: 92dvh; overflow: auto; background: var(--surface); border-radius: 20px 20px 0 0; padding: 14px 16px calc(20px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; }
+.panel-head h2 { font-size: 17px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--ink); }
+.grip { width: 36px; height: 4px; border-radius: 2px; background: var(--line); margin: 0 auto; }
+.settings-row { display: grid; gap: 6px; padding-block: 6px; border-bottom: 1px solid var(--line); }
+.settings-row:last-child { border-bottom: 0; }
+.settings-row p { margin: 0; font-size: 13px; color: var(--ink-2); }
+.settings-row .actions { margin-top: 4px; }
+.code { width: 100%; min-height: 120px; font-family: var(--font-num); font-size: 12px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.install { background: var(--surface); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); display: grid; gap: 8px; }
+.install p { margin: 0; font-size: 14px; color: var(--ink-2); }
+.install b { color: var(--ink); }
+
+/* toast */
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 30; max-width: calc(100% - 32px); background: var(--toast-bg); color: var(--toast-fg); padding: 10px 14px; border-radius: 12px; display: flex; gap: 14px; align-items: center; box-shadow: var(--shadow); font-size: 14px; }
+.toast span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toast button { border: 0; background: transparent; color: var(--toast-action); font-weight: 700; padding: 4px 2px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1 class="brand">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#1f7a5c"/><g stroke="#fff" stroke-width="8.5" stroke-linecap="round"><line x1="22" y1="18" x2="22" y2="82"/><line x1="40.7" y1="18" x2="40.7" y2="82"/><line x1="59.4" y1="18" x2="59.4" y2="82"/><line x1="78.1" y1="18" x2="78.1" y2="82"/><line x1="10" y1="70" x2="90" y2="30"/></g></svg>
+      Pocket Tally
+    </h1>
+    <button id="settingsBtn" class="iconbtn" aria-label="Settings" title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h8M18 6h2M4 12h2M10 12h10M4 18h10M20 18h0"/><circle cx="14" cy="6" r="2.2"/><circle cx="8" cy="12" r="2.2"/><circle cx="16" cy="18" r="2.2"/></svg>
+    </button>
+  </header>
+
+  <main>
+    <!-- ADD -->
+    <section id="view-add" class="view">
+      <div class="hero">
+        <div class="eyebrow">Today</div>
+        <div class="hero-amount num" id="todayTotal">0</div>
+        <div class="hero-sub" id="todaySub">Nothing yet today.</div>
+      </div>
+
+      <div class="capture">
+        <button id="micBtn" class="mic" aria-label="Tap to speak">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+        </button>
+        <div id="micStatus" class="mic-status">Tap the mic and say what you bought</div>
+        <div id="transcript" class="transcript" aria-live="polite"></div>
+        <div id="pending" class="pending" hidden></div>
+        <form id="typeForm" class="typeform" autocomplete="off">
+          <input id="typeInput" type="text" enterkeyhint="done" placeholder="or type it: coffee 4.50" aria-label="Type what you bought and how much">
+          <button type="submit" class="btn primary">Save</button>
+        </form>
+        <div id="keyboardHint" class="hint" hidden></div>
+        <div class="examples" id="examples" aria-label="Examples you can say">
+          <button type="button">coffee 4.50</button>
+          <button type="button">spent 120 on groceries</button>
+          <button type="button">uber 15 yesterday</button>
+          <button type="button">lunch 12 and parking 5</button>
+        </div>
+      </div>
+
+      <div id="installCard" class="install" hidden></div>
+
+      <section class="section">
+        <h2>Recent</h2>
+        <ul id="recentList" class="entries"></ul>
+        <div id="recentEmpty" class="empty" hidden>Your purchases will show up here as you add them. Tap one later to fix the name, amount or category.</div>
+      </section>
+    </section>
+
+    <!-- HISTORY -->
+    <section id="view-history" class="view" hidden>
+      <input id="searchInput" class="search" type="search" placeholder="Search purchases" aria-label="Search purchases">
+      <div id="historyList"></div>
+      <div id="historyEmpty" class="empty" hidden>No purchases yet.</div>
+    </section>
+
+    <!-- INSIGHTS -->
+    <section id="view-insights" class="view" hidden>
+      <div class="seg" id="periodSeg" role="tablist" aria-label="Period">
+        <button type="button" data-period="week">This week</button>
+        <button type="button" data-period="month" class="active">This month</button>
+        <button type="button" data-period="30">30 days</button>
+        <button type="button" data-period="all">All</button>
+      </div>
+      <div class="hero">
+        <div class="eyebrow" id="periodLabel">This month</div>
+        <div class="hero-amount num" id="periodTotal">0</div>
+        <div class="delta" id="periodDelta"></div>
+        <div class="hero-row">
+          <div class="stat"><b id="statPerDay">0</b><span>per day</span></div>
+          <div class="stat"><b id="statCount">0</b><span>purchases</span></div>
+          <div class="stat"><b id="statBiggest">0</b><span id="statBiggestLabel">biggest</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Where it went</h2>
+        <div id="catChart"></div>
+      </div>
+      <div class="card">
+        <h2 id="dayChartTitle">Day by day</h2>
+        <div class="chartwrap" id="dayChartWrap"></div>
+      </div>
+      <div class="card">
+        <h2>Most often</h2>
+        <ol class="toplist" id="topItems"></ol>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs" aria-label="Sections">
+    <div class="tabs-inner">
+      <button class="tab active" data-view="add" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+        Add
+      </button>
+      <button class="tab" data-view="history" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        History
+      </button>
+      <button class="tab" data-view="insights" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
+        Insights
+      </button>
+    </div>
+  </nav>
+
+  <!-- EDIT SHEET -->
+  <div id="editSheet" class="sheet" hidden>
+    <form class="panel" id="editForm">
+      <div class="grip"></div>
+      <div class="panel-head"><h2 id="editTitle">Edit purchase</h2><button type="button" class="btn small" id="editCancel">Close</button></div>
+      <div class="field"><label for="editItem">What</label><input id="editItem" type="text" required></div>
+      <div class="two">
+        <div class="field"><label for="editAmount">Amount</label><input id="editAmount" class="num" type="number" inputmode="decimal" step="0.01" min="0" required></div>
+        <div class="field"><label for="editDate">Date</label><input id="editDate" type="date" required></div>
+      </div>
+      <div class="field"><label>Category</label><div class="chips" id="editChips"></div></div>
+      <div class="field"><label for="editNote">Note</label><input id="editNote" type="text" placeholder="optional"></div>
+      <div class="actions">
+        <button type="button" class="btn danger" id="editDelete">Delete</button>
+        <span class="spacer"></span>
+        <button type="submit" class="btn primary">Save changes</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- SETTINGS SHEET -->
+  <div id="settingsSheet" class="sheet" hidden>
+    <div class="panel">
+      <div class="grip"></div>
+      <div class="panel-head"><h2>Settings</h2><button type="button" class="btn small" id="settingsClose">Close</button></div>
+      <div class="settings-row">
+        <div class="field"><label for="currencySel">Currency</label><select id="currencySel"></select></div>
+        <p>Amounts are shown in this currency. Saying "rupees" or "dollars" sets it the first time.</p>
+      </div>
+      <div class="settings-row">
+        <div class="field"><label for="langSel">Voice language</label><select id="langSel"></select></div>
+        <p>Pick the accent you speak with. Item names can be in any language; amounts and category hints work best in English.</p>
+      </div>
+      <div class="settings-row" id="installRow">
+        <h3 style="font-size:14px">Home screen</h3>
+        <p id="installText"></p>
+        <div class="actions"><button type="button" class="btn small primary" id="installBtn" hidden>Add to home screen</button></div>
+      </div>
+      <div class="settings-row">
+        <h3 style="font-size:14px">Your data</h3>
+        <p id="dataText"></p>
+        <div class="actions">
+          <button type="button" class="btn small" id="exportCsv">Download CSV</button>
+          <button type="button" class="btn small" id="copyCsv">Copy CSV</button>
+          <button type="button" class="btn small" id="exportJson">Download backup</button>
+          <label class="btn small" for="restoreFile" style="display:inline-flex;align-items:center">Restore backup<input id="restoreFile" type="file" accept="application/json,.json" hidden></label>
+        </div>
+        <textarea id="exportBox" class="code" hidden readonly aria-label="Exported data"></textarea>
+      </div>
+      <div class="settings-row">
+        <div class="actions"><button type="button" class="btn small danger" id="clearAll">Delete everything</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden role="status"><span id="toastText"></span><button type="button" id="toastAction" hidden>Undo</button></div>
+</div>
+
+<script src="parser.js"></script>
+<script>
+(function () {
+  "use strict";
+  var P = window.PocketTallyParser;
+  var $ = function (s, el) { return (el || document).querySelector(s); };
+  var $$ = function (s, el) { return Array.prototype.slice.call((el || document).querySelectorAll(s)); };
+  var inArtifact = !!(window.claude && typeof window.claude.use === "function");
+  var isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var isStandalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  // ---------- settings (per device) ----------
+  var SETTINGS_KEY = "pockettally.settings.v1";
+  var REGION_CURRENCY = { IN: "INR", US: "USD", GB: "GBP", IE: "EUR", DE: "EUR", FR: "EUR", ES: "EUR", IT: "EUR", NL: "EUR", PT: "EUR", AT: "EUR", BE: "EUR", FI: "EUR", CA: "CAD", AU: "AUD", NZ: "NZD", SG: "SGD", AE: "AED", SA: "SAR", JP: "JPY", CH: "CHF", MY: "MYR", PH: "PHP", ZA: "ZAR", NG: "NGN", KE: "KES", BD: "BDT", MX: "MXN", BR: "BRL" };
+  var CURRENCIES = [["USD", "US Dollar ($)"], ["INR", "Indian Rupee (₹)"], ["EUR", "Euro (€)"], ["GBP", "British Pound (£)"], ["CAD", "Canadian Dollar"], ["AUD", "Australian Dollar"], ["SGD", "Singapore Dollar"], ["AED", "UAE Dirham"], ["SAR", "Saudi Riyal"], ["JPY", "Japanese Yen (¥)"], ["CHF", "Swiss Franc"], ["MYR", "Malaysian Ringgit"], ["PHP", "Philippine Peso"], ["ZAR", "South African Rand"], ["NGN", "Nigerian Naira"], ["KES", "Kenyan Shilling"], ["BDT", "Bangladeshi Taka"], ["NZD", "New Zealand Dollar"], ["MXN", "Mexican Peso"], ["BRL", "Brazilian Real"]];
+  var LANGS = [["", "Device language"], ["en-US", "English (US)"], ["en-GB", "English (UK)"], ["en-IN", "English (India)"], ["en-AU", "English (Australia)"], ["en-CA", "English (Canada)"], ["hi-IN", "Hindi"], ["es-ES", "Spanish (Spain)"], ["es-MX", "Spanish (Mexico)"], ["fr-FR", "French"], ["de-DE", "German"], ["pt-BR", "Portuguese (Brazil)"], ["it-IT", "Italian"], ["ar-SA", "Arabic"], ["ja-JP", "Japanese"], ["zh-CN", "Chinese (Mandarin)"]];
+
+  function guessCurrency() {
+    var lang = navigator.language || "en-US";
+    var region = (lang.split("-")[1] || "").toUpperCase();
+    return REGION_CURRENCY[region] || "USD";
+  }
+  function defaultSettings() { return { currency: guessCurrency(), currencyAuto: true, lang: "", learned: {}, installDismissed: false }; }
+  var settings = defaultSettings();
+  try { var saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"); Object.assign(settings, saved); if (!settings.learned) settings.learned = {}; } catch (e) {}
+  function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {} }
+
+  // ---------- money & dates ----------
+  var fmtCache = {};
+  var SYMBOL = { USD: "$", INR: "₹", EUR: "€", GBP: "£", JPY: "¥", CAD: "CA$", AUD: "A$", NZD: "NZ$", SGD: "S$", MXN: "MX$", BRL: "R$", PHP: "₱", NGN: "₦", KES: "KSh", ZAR: "R", AED: "AED ", SAR: "SAR ", CHF: "CHF ", MYR: "RM", BDT: "৳" };
+  function locale() {
+    var tag = (navigator.language || "en").split("@")[0];
+    try { return Intl.getCanonicalLocales(tag)[0] || "en"; } catch (e) { return "en"; }
+  }
+  function money(n) {
+    n = Number(n) || 0;
+    var whole = Math.abs(n - Math.round(n)) < 0.005;
+    var key = settings.currency + (whole ? "w" : "f");
+    try {
+      if (!fmtCache[key]) fmtCache[key] = new Intl.NumberFormat(locale(), { style: "currency", currency: settings.currency, minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: whole ? 0 : 2 });
+      return fmtCache[key].format(n);
+    } catch (e) { return (SYMBOL[settings.currency] || settings.currency + " ") + (whole ? String(Math.round(n)) : n.toFixed(2)); }
+  }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function dateStr(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function addDays(d, n) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() + n); return x; }
+  function todayStr(offset) { return dateStr(addDays(new Date(), offset || 0)); }
+  function parseDate(s) { var p = String(s).split("-").map(Number); return new Date(p[0], p[1] - 1, p[2] || 1); }
+  function dayLabel(s) {
+    if (s === todayStr()) return "Today";
+    if (s === todayStr(-1)) return "Yesterday";
+    var d = parseDate(s), now = new Date();
+    return d.toLocaleDateString(undefined, d.getFullYear() === now.getFullYear() ? { weekday: "short", day: "numeric", month: "short" } : { day: "numeric", month: "short", year: "numeric" });
+  }
+  function timeLabel(ts) { try { return new Date(ts).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }); } catch (e) { return ""; } }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function catLabel(id) { return (P.CATEGORY_BY_ID[id] || P.CATEGORY_BY_ID.other).label; }
+
+  // ---------- stores ----------
+  function makeLocalStore() {
+    var KEY = "pockettally.entries.v1";
+    var entries = [], listeners = [];
+    function read() { try { var v = JSON.parse(localStorage.getItem(KEY) || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+    function persist() { try { localStorage.setItem(KEY, JSON.stringify(entries)); } catch (e) { toast("Could not save: this browser is blocking storage."); } }
+    function emit() { listeners.forEach(function (fn) { fn(entries.slice()); }); }
+    window.addEventListener("storage", function (e) { if (e.key === KEY) { entries = read(); emit(); } });
+    return {
+      kind: "local",
+      init: function (fn) { listeners.push(fn); entries = read(); emit(); },
+      add: function (e) { entries.push(e); persist(); emit(); return Promise.resolve(); },
+      update: function (id, patch) { var i = entries.findIndex(function (x) { return x.id === id; }); if (i >= 0) { entries[i] = Object.assign({}, entries[i], patch); persist(); emit(); } return Promise.resolve(); },
+      remove: function (id) { entries = entries.filter(function (x) { return x.id !== id; }); persist(); emit(); return Promise.resolve(); },
+      replaceAll: function (list) { entries = list.slice(); persist(); emit(); return Promise.resolve(); }
+    };
+  }
+  function makeDbStore(db) {
+    var col = db.collection("expenses");
+    var entries = [], listeners = [];
+    function emit() { listeners.forEach(function (fn) { fn(entries.slice()); }); }
+    function clean(e) { var o = {}; Object.keys(e).forEach(function (k) { if (e[k] !== undefined) o[k] = e[k]; }); return o; }
+    return {
+      kind: "db",
+      init: function (fn) {
+        listeners.push(fn);
+        col.onSnapshot(function (snap) {
+          entries = snap.docs.filter(function (d) { return d.exists; }).map(function (d) { return Object.assign({ id: d.id }, d.data()); });
+          emit();
+        }, function (err) { toast("Sync stopped (" + (err && err.code) + "). Reload to reconnect."); });
+      },
+      add: function (e) { entries.push(e); emit(); return col.doc(e.id).set(clean(e)).catch(dbFail); },
+      update: function (id, patch) {
+        var i = entries.findIndex(function (x) { return x.id === id; });
+        if (i >= 0) { entries[i] = Object.assign({}, entries[i], patch); emit(); }
+        return col.doc(id).update(clean(patch)).catch(dbFail);
+      },
+      remove: function (id) { entries = entries.filter(function (x) { return x.id !== id; }); emit(); return col.doc(id).delete().catch(dbFail); },
+      replaceAll: function (list) {
+        var old = entries.slice(); entries = list.slice(); emit();
+        var chain = Promise.resolve();
+        old.forEach(function (e) { if (!list.some(function (x) { return x.id === e.id; })) chain = chain.then(function () { return col.doc(e.id).delete(); }); });
+        list.forEach(function (e) { chain = chain.then(function () { return col.doc(e.id).set(clean(e)); }); });
+        return chain.catch(dbFail);
+      }
+    };
+  }
+  function dbFail(err) {
+    var code = err && err.code;
+    if (code === "quota_exceeded") toast("Storage is full. Delete old purchases to add more.");
+    else if (code === "invalid_argument") toast("You can view this tally but not change it.");
+    else toast("Could not sync that change. Check your connection.");
+  }
+
+  var store = null, storeReady;
+  storeReady = (function () {
+    if (inArtifact) {
+      return window.claude.use("db").then(function (db) { return db ? makeDbStore(db) : makeLocalStore(); }, function () { return makeLocalStore(); });
+    }
+    return Promise.resolve(makeLocalStore());
+  })().then(function (s) { store = s; s.init(onEntries); updateDataText(); return s; });
+
+  // ---------- state ----------
+  var entries = [];
+  var view = "add";
+  var period = "month";
+  var editingId = null;
+  var deferredInstall = null;
+  var toastTimer = null, toastUndo = null;
+  var searchQuery = "";
+
+  function onEntries(list) {
+    entries = list.map(function (e) { return Object.assign({ category: "other", note: "", currency: settings.currency }, e, { amount: Number(e.amount) || 0 }); });
+    entries.sort(function (a, b) { return (b.date > a.date ? 1 : b.date < a.date ? -1 : 0) || (b.ts || 0) - (a.ts || 0); });
+    renderAll();
+  }
+
+  // ---------- views ----------
+  function showView(v) {
+    view = v;
+    $$(".view").forEach(function (el) { el.hidden = el.id !== "view-" + v; });
+    $$(".tab").forEach(function (b) { b.classList.toggle("active", b.dataset.view === v); });
+    if (location.hash !== "#" + v && (v !== "add" || location.hash)) { try { history.replaceState(null, "", "#" + v); } catch (e) {} }
+    window.scrollTo(0, 0);
+    renderAll();
+  }
+  $$(".tab").forEach(function (b) { b.addEventListener("click", function () { showView(b.dataset.view); }); });
+  (function () { var h = (location.hash || "").replace("#", ""); if (h === "history" || h === "insights") showView(h); })();
+
+  function renderAll() {
+    renderAdd();
+    if (view === "history") renderHistory();
+    if (view === "insights") renderInsights();
+  }
+
+  // ---------- Add ----------
+  function entryRow(e) {
+    return '<li class="entry" data-id="' + esc(e.id) + '" role="button" tabindex="0">' +
+      '<span class="dot" data-cat="' + esc(e.category) + '"></span>' +
+      '<div class="entry-main"><div class="entry-item">' + esc(e.item || "Untitled") + '</div>' +
+      '<div class="entry-meta">' + esc(catLabel(e.category)) + (e.note ? " · " + esc(e.note) : "") + (e.ts && e.date === todayStr() ? " · " + esc(timeLabel(e.ts)) : "") + "</div></div>" +
+      '<div class="entry-amt">' + esc(money(e.amount)) + "</div></li>";
+  }
+  function renderAdd() {
+    var today = todayStr();
+    var todays = entries.filter(function (e) { return e.date === today; });
+    var total = todays.reduce(function (s, e) { return s + e.amount; }, 0);
+    $("#todayTotal").textContent = money(total);
+    var monthStart = today.slice(0, 7) + "-01";
+    var monthTotal = entries.filter(function (e) { return e.date >= monthStart && e.date <= today; }).reduce(function (s, e) { return s + e.amount; }, 0);
+    $("#todaySub").textContent = (todays.length ? todays.length + (todays.length === 1 ? " purchase today" : " purchases today") : "Nothing yet today") + " · " + money(monthTotal) + " this month";
+    var recent = entries.slice(0, 6);
+    $("#recentList").innerHTML = recent.map(entryRow).join("");
+    $("#recentEmpty").hidden = recent.length > 0;
+    renderInstallCard();
+  }
+  document.addEventListener("click", function (ev) {
+    var row = ev.target.closest && ev.target.closest(".entry[data-id]");
+    if (row) openEdit(row.dataset.id);
+  });
+  document.addEventListener("keydown", function (ev) {
+    if ((ev.key === "Enter" || ev.key === " ") && ev.target.classList && ev.target.classList.contains("entry")) { ev.preventDefault(); openEdit(ev.target.dataset.id); }
+  });
+
+  // ---------- capture ----------
+  var micBtn = $("#micBtn"), micStatus = $("#micStatus"), transcriptEl = $("#transcript"), typeInput = $("#typeInput");
+  var rec = null, listening = false;
+  function status(msg) { micStatus.textContent = msg; }
+  function setMic(state) {
+    listening = state === "listening";
+    micBtn.classList.toggle("listening", listening);
+    micBtn.setAttribute("aria-label", listening ? "Stop listening" : "Tap to speak");
+  }
+  function showTranscript(text, isFinal) { transcriptEl.textContent = text; transcriptEl.classList.toggle("interim", !isFinal); }
+  function keyboardFallback(msg) {
+    var hint = $("#keyboardHint");
+    hint.textContent = msg + " Tap the box below, then press the microphone key on your keyboard and say it.";
+    hint.hidden = false;
+    typeInput.focus();
+  }
+  micBtn.addEventListener("click", function () {
+    if (listening) { try { rec.stop(); } catch (e) {} return; }
+    if (!SR || inArtifact) { keyboardFallback(inArtifact ? "Voice input is not available in this preview." : "This browser has no voice input."); return; }
+    var finalText = "", errored = false;
+    try {
+      rec = new SR();
+      rec.lang = settings.lang || navigator.language || "en-US";
+      rec.interimResults = true;
+      rec.continuous = false;
+      rec.maxAlternatives = 1;
+      rec.onstart = function () { setMic("listening"); status("Listening…"); showTranscript("", false); $("#keyboardHint").hidden = true; };
+      rec.onresult = function (ev) {
+        var interim = "";
+        for (var i = ev.resultIndex; i < ev.results.length; i++) {
+          var r = ev.results[i];
+          if (r.isFinal) finalText += r[0].transcript; else interim += r[0].transcript;
+        }
+        showTranscript(finalText || interim, !!finalText);
+      };
+      rec.onerror = function (ev) {
+        errored = true; setMic("idle");
+        var code = ev && ev.error;
+        if (code === "not-allowed" || code === "service-not-allowed") keyboardFallback(isStandalone && isIOS ? "iPhone home-screen apps can't use the mic directly." : "Microphone access was blocked.");
+        else if (code === "no-speech") status("Didn't hear anything. Tap the mic and try again.");
+        else if (code === "network") status("Voice needs an internet connection. You can type it instead.");
+        else if (code === "aborted") status("Tap the mic and say what you bought");
+        else keyboardFallback("Voice input failed (" + code + ").");
+      };
+      rec.onend = function () {
+        setMic("idle");
+        if (finalText.trim()) { status("Tap the mic and say what you bought"); handleUtterance(finalText.trim()); }
+        else if (!errored) status("Didn't catch that. Tap the mic and try again, or type it.");
+      };
+      rec.start();
+    } catch (e) { setMic("idle"); keyboardFallback("Voice input could not start."); }
+  });
+
+  $("#typeForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var text = typeInput.value.trim();
+    if (!text) { typeInput.focus(); return; }
+    typeInput.value = "";
+    showTranscript(text, true);
+    handleUtterance(text);
+  });
+  $("#examples").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button"); if (!b) return;
+    showTranscript(b.textContent, true);
+    handleUtterance(b.textContent);
+  });
+
+  function handleUtterance(text) {
+    var result = P.parse(text, settings.learned);
+    var complete = result.entries.filter(function (e) { return e.item && e.amount != null; });
+    var incomplete = result.entries.filter(function (e) { return !(e.item && e.amount != null); });
+    var chain = Promise.resolve();
+    complete.forEach(function (e) { chain = chain.then(function () { return saveParsed(e); }); });
+    chain.then(function () {
+      if (complete.length > 1) toast("Saved " + complete.length + " purchases");
+      if (incomplete.length) showPending(incomplete[0]);
+    });
+  }
+  function saveParsed(e) {
+    if (settings.currencyAuto && e.currency && e.currency !== settings.currency) { settings.currency = e.currency; fmtCache = {}; saveSettings(); syncSettingsUI(); }
+    var entry = { id: uid(), item: e.item, amount: e.amount, currency: e.currency || settings.currency, category: e.category || "other", date: todayStr(e.dayOffset || 0), ts: Date.now(), note: "", raw: e.raw || "" };
+    return storeReady.then(function () { return store.add(entry); }).then(function () {
+      toast("Saved · " + entry.item + " · " + money(entry.amount), { label: "Undo", action: function () { store.remove(entry.id); } });
+      showTranscript("", false);
+    });
+  }
+
+  // pending (missing item or amount)
+  function showPending(e) {
+    var box = $("#pending");
+    var needAmount = e.amount == null, needItem = !e.item;
+    var cats = P.CATEGORIES.map(function (c) { return '<button type="button" class="chip' + (c.id === e.category ? " active" : "") + '" data-cat="' + c.id + '"><span class="dot" data-cat="' + c.id + '"></span>' + esc(c.label) + "</button>"; }).join("");
+    box.innerHTML =
+      "<p>" + (needAmount && needItem ? "I couldn't make that out. Fill in what and how much." : needAmount ? "How much was <b>" + esc(e.item) + "</b>?" : "What was <b>" + esc(money(e.amount)) + "</b> for?") + "</p>" +
+      '<div class="two">' +
+      '<div class="field"><label for="pItem">What</label><input id="pItem" type="text" value="' + esc(e.item) + '"></div>' +
+      '<div class="field"><label for="pAmount">Amount</label><input id="pAmount" class="num" type="number" inputmode="decimal" step="0.01" min="0" value="' + (e.amount != null ? e.amount : "") + '"></div>' +
+      "</div>" +
+      '<div class="chips" id="pChips">' + cats + "</div>" +
+      '<div class="actions"><button type="button" class="btn small" id="pCancel">Cancel</button><span class="spacer"></span><button type="button" class="btn small primary" id="pSave">Save</button></div>';
+    box.hidden = false;
+    var cat = e.category || "other", catTouched = false;
+    $("#pChips").addEventListener("click", function (ev) {
+      var b = ev.target.closest(".chip"); if (!b) return;
+      cat = b.dataset.cat; catTouched = true; $$("#pChips .chip").forEach(function (c) { c.classList.toggle("active", c === b); });
+    });
+    $("#pCancel").addEventListener("click", function () { box.hidden = true; box.innerHTML = ""; showTranscript("", false); });
+    function save() {
+      var item = $("#pItem").value.trim(), amount = parseFloat($("#pAmount").value);
+      if (!item) { $("#pItem").focus(); return; }
+      if (!(amount >= 0)) { $("#pAmount").focus(); return; }
+      box.hidden = true; box.innerHTML = "";
+      if (!catTouched) cat = P.categorize(item, settings.learned);
+      saveParsed({ item: item, amount: amount, currency: e.currency, category: cat, dayOffset: e.dayOffset, raw: e.raw });
+    }
+    $("#pSave").addEventListener("click", save);
+    box.addEventListener("keydown", function (ev) { if (ev.key === "Enter") { ev.preventDefault(); save(); } });
+    (needItem ? $("#pItem") : $("#pAmount")).focus();
+  }
+
+  // ---------- History ----------
+  $("#searchInput").addEventListener("input", function () { searchQuery = this.value.trim().toLowerCase(); renderHistory(); });
+  function renderHistory() {
+    var list = entries;
+    if (searchQuery) list = entries.filter(function (e) { return (e.item + " " + (e.note || "") + " " + catLabel(e.category)).toLowerCase().indexOf(searchQuery) >= 0; });
+    $("#historyEmpty").hidden = list.length > 0;
+    $("#historyEmpty").textContent = searchQuery ? "Nothing matches “" + searchQuery + "”." : "No purchases yet. Add one from the Add tab.";
+    var groups = [], map = {};
+    list.forEach(function (e) { if (!map[e.date]) { map[e.date] = { date: e.date, items: [], total: 0 }; groups.push(map[e.date]); } map[e.date].items.push(e); map[e.date].total += e.amount; });
+    $("#historyList").innerHTML = groups.map(function (g) {
+      return '<div class="day-head"><h3>' + esc(dayLabel(g.date)) + '</h3><span class="day-total">' + esc(money(g.total)) + "</span></div>" +
+        '<ul class="entries">' + g.items.map(entryRow).join("") + "</ul>";
+    }).join("");
+  }
+
+  // ---------- Insights ----------
+  $("#periodSeg").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-period]"); if (!b) return;
+    period = b.dataset.period;
+    $$("#periodSeg button").forEach(function (x) { x.classList.toggle("active", x === b); });
+    renderInsights();
+  });
+  function periodRange(p) {
+    var today = parseDate(todayStr());
+    var r = { start: null, end: today, prevStart: null, prevEnd: null, label: "All time", prevLabel: "" };
+    if (p === "week") { var dow = (today.getDay() + 6) % 7; r.start = addDays(today, -dow); r.prevStart = addDays(r.start, -7); r.prevEnd = addDays(r.start, -1); r.label = "This week"; r.prevLabel = "last week"; }
+    else if (p === "month") { r.start = new Date(today.getFullYear(), today.getMonth(), 1); r.prevStart = new Date(today.getFullYear(), today.getMonth() - 1, 1); r.prevEnd = addDays(r.start, -1); r.label = today.toLocaleDateString(undefined, { month: "long", year: "numeric" }); r.prevLabel = "last month"; }
+    else if (p === "30") { r.start = addDays(today, -29); r.prevStart = addDays(r.start, -30); r.prevEnd = addDays(r.start, -1); r.label = "Last 30 days"; r.prevLabel = "the 30 days before"; }
+    return r;
+  }
+  function inRange(e, s, en) { return (!s || e.date >= dateStr(s)) && (!en || e.date <= dateStr(en)); }
+  function sum(list) { return list.reduce(function (t, e) { return t + e.amount; }, 0); }
+
+  function renderInsights() {
+    var r = periodRange(period);
+    var list = entries.filter(function (e) { return inRange(e, r.start, r.end); });
+    var total = sum(list);
+    $("#periodLabel").textContent = r.label;
+    $("#periodTotal").textContent = money(total);
+    // days elapsed
+    var today = parseDate(todayStr());
+    var firstDate = entries.length ? parseDate(entries[entries.length - 1].date) : today;
+    var start = r.start || firstDate;
+    var days = Math.max(1, Math.round((today - start) / 86400000) + 1);
+    $("#statPerDay").textContent = money(total / days);
+    $("#statCount").textContent = String(list.length);
+    var biggest = list.reduce(function (b, e) { return !b || e.amount > b.amount ? e : b; }, null);
+    $("#statBiggest").textContent = biggest ? money(biggest.amount) : money(0);
+    $("#statBiggestLabel").textContent = biggest ? "biggest: " + biggest.item : "biggest";
+    // delta vs previous
+    var deltaEl = $("#periodDelta");
+    if (r.prevStart) {
+      var prev = sum(entries.filter(function (e) { return inRange(e, r.prevStart, r.prevEnd); }));
+      if (prev > 0 && total > 0) { var pct = Math.round((total - prev) / prev * 100); deltaEl.textContent = (pct >= 0 ? "+" : "") + pct + "% compared with " + r.prevLabel + " (" + money(prev) + ")"; }
+      else if (prev > 0) deltaEl.textContent = "Nothing yet. " + money(prev) + " " + r.prevLabel + ".";
+      else deltaEl.textContent = list.length ? "No spending recorded " + r.prevLabel + " to compare with." : "Nothing recorded in this period.";
+    } else {
+      deltaEl.textContent = entries.length ? "Since " + dayLabel(entries[entries.length - 1].date) + ", " + days + " day" + (days === 1 ? "" : "s") : "Nothing recorded yet.";
+    }
+    renderCategoryChart(list, total);
+    renderDayChart(list, r);
+    renderTopItems(list);
+  }
+  function renderCategoryChart(list, total) {
+    var byCat = {};
+    list.forEach(function (e) { byCat[e.category] = (byCat[e.category] || 0) + e.amount; });
+    var rows = Object.keys(byCat).map(function (id) { return { id: id, amt: byCat[id] }; }).sort(function (a, b) { return b.amt - a.amt; });
+    var max = rows.length ? rows[0].amt : 0;
+    $("#catChart").innerHTML = rows.length ? rows.map(function (row) {
+      var pct = total ? Math.round(row.amt / total * 100) : 0;
+      return '<div class="catrow"><span class="dot" data-cat="' + esc(row.id) + '"></span><span class="label">' + esc(catLabel(row.id)) + '</span><span class="val">' + esc(money(row.amt)) + '<span class="pct">' + pct + '%</span></span>' +
+        '<div class="catbar"><i class="dotc-' + esc(row.id) + '" style="width:' + (max ? Math.max(2, row.amt / max * 100) : 0) + '%"></i></div></div>';
+    }).join("") : '<div class="empty">Add a few purchases and this shows which categories take the most.</div>';
+  }
+  function renderDayChart(list, r) {
+    var wrap = $("#dayChartWrap");
+    var buckets = [], today = parseDate(todayStr());
+    var monthly = !r.start;
+    if (monthly) {
+      $("#dayChartTitle").textContent = "Month by month";
+      var first = entries.length ? parseDate(entries[entries.length - 1].date) : today;
+      var m = new Date(first.getFullYear(), first.getMonth(), 1), guard = 0;
+      while (m <= today && guard++ < 120) { var key = m.getFullYear() + "-" + pad(m.getMonth() + 1); buckets.push({ key: key, label: m.toLocaleDateString(undefined, { month: "short", year: buckets.length === 0 || m.getMonth() === 0 ? "2-digit" : undefined }), tip: m.toLocaleDateString(undefined, { month: "long", year: "numeric" }), total: 0 }); m = new Date(m.getFullYear(), m.getMonth() + 1, 1); }
+      list.forEach(function (e) { var b = buckets.find(function (x) { return x.key === e.date.slice(0, 7); }); if (b) b.total += e.amount; });
+    } else {
+      $("#dayChartTitle").textContent = "Day by day";
+      var d = r.start, end = period === "week" ? addDays(r.start, 6) : period === "month" ? new Date(today.getFullYear(), today.getMonth() + 1, 0) : today;
+      while (d <= end) { var ds = dateStr(d); buckets.push({ key: ds, label: period === "week" ? d.toLocaleDateString(undefined, { weekday: "short" }) : String(d.getDate()), tip: dayLabel(ds), total: 0, future: d > today, today: ds === todayStr() }); d = addDays(d, 1); }
+      list.forEach(function (e) { var b = buckets.find(function (x) { return x.key === e.date; }); if (b) b.total += e.amount; });
+    }
+    if (!list.length) { wrap.innerHTML = '<div class="empty">Nothing in this period yet.</div>'; return; }
+    var W = 360, H = 154, padL = 44, padR = 8, padT = 14, padB = 24;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    var max = Math.max.apply(null, buckets.map(function (b) { return b.total; })) || 1;
+    var nice = niceMax(max);
+    var n = buckets.length, slot = innerW / n, gap = Math.min(4, slot * 0.25), bw = Math.max(2, slot - gap);
+    var svg = '<svg class="daychart" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Spending per ' + (monthly ? "month" : "day") + '">';
+    [0.5, 1].forEach(function (f) { var y = padT + innerH - innerH * f; svg += '<line class="grid" x1="' + padL + '" x2="' + (W - padR) + '" y1="' + y + '" y2="' + y + '"/><text class="ylab" x="' + (padL - 6) + '" y="' + (y + 3) + '" text-anchor="end">' + esc(shortMoney(nice * f)) + "</text>"; });
+    svg += '<line class="axis" x1="' + padL + '" x2="' + (W - padR) + '" y1="' + (padT + innerH) + '" y2="' + (padT + innerH) + '"/>';
+    var labelEvery = n <= 7 ? 1 : n <= 14 ? 2 : n <= 31 ? 5 : Math.ceil(n / 6);
+    buckets.forEach(function (b, i) {
+      var x = padL + i * slot + gap / 2;
+      var h = b.total > 0 ? Math.max(2, innerH * b.total / nice) : 0;
+      var y = padT + innerH - h;
+      svg += '<rect class="bar' + (b.today ? " today" : "") + '" x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2"/>';
+      svg += '<rect class="hit" data-i="' + i + '" x="' + (padL + i * slot).toFixed(1) + '" y="' + padT + '" width="' + slot.toFixed(1) + '" height="' + innerH + '"/>';
+      if (i % labelEvery === 0 || b.today || i === n - 1 && labelEvery > 1 && (n - 1) % labelEvery > 1) svg += '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle"' + (b.today ? ' font-weight="700"' : "") + ">" + esc(b.label) + "</text>";
+    });
+    svg += "</svg>";
+    wrap.innerHTML = svg + '<div class="tip" id="dayTip" hidden></div>';
+    var tip = $("#dayTip");
+    function showTip(i, target) {
+      var b = buckets[i]; if (!b) return;
+      tip.innerHTML = esc(b.tip) + " · <b>" + esc(money(b.total)) + "</b>";
+      tip.hidden = false;
+      var wr = wrap.getBoundingClientRect(), br = target.getBoundingClientRect();
+      var scale = wr.width / W;
+      tip.style.left = (br.left - wr.left + br.width / 2) + "px";
+      tip.style.top = Math.max(0, (padT + innerH - Math.max(2, innerH * b.total / nice)) * scale - 6) + "px";
+    }
+    wrap.addEventListener("pointerover", function (ev) { var t = ev.target.closest(".hit"); if (t) showTip(+t.dataset.i, t); });
+    wrap.addEventListener("pointerdown", function (ev) { var t = ev.target.closest(".hit"); if (t) showTip(+t.dataset.i, t); });
+    wrap.addEventListener("pointerleave", function () { tip.hidden = true; });
+  }
+  function niceMax(v) { var p = Math.pow(10, Math.floor(Math.log10(v))); var m = v / p; var f = m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10; return f * p; }
+  function shortMoney(v) {
+    if (v >= 1000000) return trimNum(v / 1000000) + "M";
+    if (v >= 1000) return trimNum(v / 1000) + "k";
+    return trimNum(v);
+  }
+  function trimNum(v) { return String(Math.round(v * 10) / 10); }
+  function renderTopItems(list) {
+    var map = {};
+    list.forEach(function (e) { var k = P.normalizeKey(e.item) || "untitled"; if (!map[k]) map[k] = { label: e.item || "Untitled", count: 0, total: 0 }; map[k].count++; map[k].total += e.amount; });
+    var rows = Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) { return b.count - a.count || b.total - a.total; }).slice(0, 6);
+    $("#topItems").innerHTML = rows.length ? rows.map(function (r) { return "<li><span>" + esc(r.label) + "<small>×" + r.count + "</small></span><span class=\"num\">" + esc(money(r.total)) + "</span></li>"; }).join("") : '<li class="empty" style="display:block">Repeat purchases will show up here.</li>';
+  }
+
+  // ---------- Edit sheet ----------
+  var editCat = "other", deleteArmed = null;
+  function openEdit(id) {
+    var e = entries.find(function (x) { return x.id === id; }); if (!e) return;
+    editingId = id; editCat = e.category || "other";
+    $("#editItem").value = e.item || "";
+    $("#editAmount").value = e.amount;
+    $("#editDate").value = e.date;
+    $("#editNote").value = e.note || "";
+    renderEditChips();
+    $("#editDelete").textContent = "Delete"; deleteArmed = null;
+    $("#editSheet").hidden = false;
+  }
+  function renderEditChips() {
+    $("#editChips").innerHTML = P.CATEGORIES.map(function (c) { return '<button type="button" class="chip' + (c.id === editCat ? " active" : "") + '" data-cat="' + c.id + '"><span class="dot" data-cat="' + c.id + '"></span>' + esc(c.label) + "</button>"; }).join("");
+  }
+  $("#editChips").addEventListener("click", function (ev) { var b = ev.target.closest(".chip"); if (!b) return; editCat = b.dataset.cat; renderEditChips(); });
+  function closeEdit() { $("#editSheet").hidden = true; editingId = null; }
+  $("#editCancel").addEventListener("click", closeEdit);
+  $("#editSheet").addEventListener("click", function (ev) { if (ev.target === ev.currentTarget) closeEdit(); });
+  $("#editForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var id = editingId; if (!id) return;
+    var item = $("#editItem").value.trim(), amount = parseFloat($("#editAmount").value), date = $("#editDate").value, note = $("#editNote").value.trim();
+    if (!item || !(amount >= 0) || !date) return;
+    var key = P.normalizeKey(item);
+    if (key) {
+      if (P.categorize(item) !== editCat) settings.learned[key] = editCat; else delete settings.learned[key];
+      saveSettings();
+    }
+    store.update(id, { item: item, amount: Math.round(amount * 100) / 100, date: date, note: note, category: editCat });
+    closeEdit();
+    toast("Updated");
+  });
+  $("#editDelete").addEventListener("click", function () {
+    if (deleteArmed !== editingId) { deleteArmed = editingId; this.textContent = "Tap again to delete"; return; }
+    var e = entries.find(function (x) { return x.id === editingId; });
+    store.remove(editingId);
+    closeEdit();
+    toast("Deleted " + (e ? e.item : ""), { label: "Undo", action: function () { if (e) store.add(e); } });
+  });
+
+  // ---------- Settings ----------
+  var curSel = $("#currencySel"), langSel = $("#langSel");
+  curSel.innerHTML = CURRENCIES.map(function (c) { return '<option value="' + c[0] + '">' + esc(c[1]) + "</option>"; }).join("");
+  langSel.innerHTML = LANGS.map(function (l) { return '<option value="' + l[0] + '">' + esc(l[1]) + "</option>"; }).join("");
+  function syncSettingsUI() {
+    if (!CURRENCIES.some(function (c) { return c[0] === settings.currency; })) curSel.insertAdjacentHTML("beforeend", '<option value="' + esc(settings.currency) + '">' + esc(settings.currency) + "</option>");
+    curSel.value = settings.currency; langSel.value = settings.lang || "";
+  }
+  syncSettingsUI();
+  curSel.addEventListener("change", function () { settings.currency = this.value; settings.currencyAuto = false; fmtCache = {}; saveSettings(); renderAll(); });
+  langSel.addEventListener("change", function () { settings.lang = this.value; saveSettings(); });
+  $("#settingsBtn").addEventListener("click", function () { renderInstallText(); $("#settingsSheet").hidden = false; });
+  $("#settingsClose").addEventListener("click", function () { $("#settingsSheet").hidden = true; $("#exportBox").hidden = true; });
+  $("#settingsSheet").addEventListener("click", function (ev) { if (ev.target === ev.currentTarget) { ev.currentTarget.hidden = true; $("#exportBox").hidden = true; } });
+  function updateDataText() {
+    $("#dataText").textContent = store && store.kind === "db"
+      ? "Purchases are saved with this page on claude.ai, so they show on every device where you open it. Download a copy whenever you like."
+      : "Purchases are saved only on this device, in this browser. Download a backup now and then, and restore it on a new phone.";
+    if (inArtifact) { $("#exportCsv").hidden = true; $("#exportJson").hidden = true; }
+  }
+
+  function toCsv() {
+    var rows = [["date", "item", "amount", "currency", "category", "note"]].concat(entries.slice().reverse().map(function (e) { return [e.date, e.item, e.amount, e.currency || settings.currency, catLabel(e.category), e.note || ""]; }));
+    return rows.map(function (r) { return r.map(function (v) { v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(","); }).join("\n");
+  }
+  function toBackup() { return JSON.stringify({ app: "pocket-tally", version: 1, exported: new Date().toISOString(), currency: settings.currency, learned: settings.learned, entries: entries }, null, 2); }
+  function download(name, text, type) {
+    try {
+      var blob = new Blob([text], { type: type }); var url = URL.createObjectURL(blob);
+      var a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    } catch (e) { showExport(text); }
+  }
+  function showExport(text) { var box = $("#exportBox"); box.value = text; box.hidden = false; box.focus(); box.select(); }
+  function copyText(text) {
+    var done = function () { toast("Copied to clipboard"); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { showExport(text); toast("Select the text and copy it"); });
+    else { showExport(text); toast("Select the text and copy it"); }
+  }
+  $("#exportCsv").addEventListener("click", function () { download("pocket-tally-" + todayStr() + ".csv", toCsv(), "text/csv"); });
+  $("#copyCsv").addEventListener("click", function () { copyText(toCsv()); });
+  $("#exportJson").addEventListener("click", function () { download("pocket-tally-backup-" + todayStr() + ".json", toBackup(), "application/json"); });
+  $("#restoreFile").addEventListener("change", function () {
+    var file = this.files && this.files[0]; if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var data = JSON.parse(reader.result);
+        var list = Array.isArray(data) ? data : data.entries;
+        if (!Array.isArray(list)) throw new Error("no entries");
+        var valid = list.filter(function (e) { return e && typeof e.item === "string" && isFinite(Number(e.amount)) && /^\d{4}-\d{2}-\d{2}$/.test(String(e.date)); })
+          .map(function (e) { return { id: String(e.id || uid()), item: e.item, amount: Number(e.amount), currency: e.currency || settings.currency, category: P.CATEGORY_BY_ID[e.category] ? e.category : "other", date: e.date, ts: Number(e.ts) || parseDate(e.date).getTime(), note: e.note || "", raw: e.raw || "" }; });
+        var merged = entries.slice(), added = 0;
+        valid.forEach(function (e) { if (!merged.some(function (x) { return x.id === e.id; })) { merged.push(e); added++; } });
+        if (data.learned && typeof data.learned === "object") { Object.assign(settings.learned, data.learned); saveSettings(); }
+        store.replaceAll(merged).then(function () { toast("Restored " + added + " purchase" + (added === 1 ? "" : "s")); });
+      } catch (e) { toast("That file isn't a Pocket Tally backup."); }
+    };
+    reader.readAsText(file);
+    this.value = "";
+  });
+  var clearArmed = false;
+  $("#clearAll").addEventListener("click", function () {
+    if (!clearArmed) { clearArmed = true; this.textContent = "Tap again to delete every purchase"; var self = this; setTimeout(function () { clearArmed = false; self.textContent = "Delete everything"; }, 4000); return; }
+    clearArmed = false; this.textContent = "Delete everything";
+    store.replaceAll([]).then(function () { toast("All purchases deleted"); });
+  });
+
+  // ---------- install ----------
+  window.addEventListener("beforeinstallprompt", function (ev) { ev.preventDefault(); deferredInstall = ev; renderInstallCard(); renderInstallText(); });
+  window.addEventListener("appinstalled", function () { deferredInstall = null; settings.installDismissed = true; saveSettings(); renderInstallCard(); renderInstallText(); });
+  function installHow() {
+    if (deferredInstall) return "prompt";
+    if (isIOS && !isStandalone) return "ios";
+    if (!isStandalone && !inArtifact) return "menu";
+    return null;
+  }
+  function renderInstallCard() {
+    var card = $("#installCard"), how = installHow();
+    if (!how || settings.installDismissed || isStandalone || inArtifact || view !== "add") { card.hidden = true; return; }
+    card.innerHTML = "<b>Keep it on your home screen</b>" +
+      (how === "prompt" ? "<p>Install it like an app. It opens full screen and works without a connection.</p>" :
+       how === "ios" ? "<p>In Safari, tap <b>Share</b> (the square with the arrow), then <b>Add to Home Screen</b>. It opens full screen and works offline.</p>" :
+       "<p>Open your browser menu and choose <b>Add to Home screen</b> or <b>Install app</b>.</p>") +
+      '<div class="actions">' + (how === "prompt" ? '<button type="button" class="btn small primary" id="installNow">Install</button>' : "") + '<button type="button" class="btn small" id="installLater">Not now</button></div>';
+    card.hidden = false;
+    var now = $("#installNow"); if (now) now.addEventListener("click", promptInstall);
+    $("#installLater").addEventListener("click", function () { settings.installDismissed = true; saveSettings(); card.hidden = true; });
+  }
+  function promptInstall() { if (!deferredInstall) return; deferredInstall.prompt(); deferredInstall.userChoice.then(function () { deferredInstall = null; renderInstallCard(); renderInstallText(); }); }
+  function renderInstallText() {
+    var how = installHow(), t = $("#installText"), b = $("#installBtn");
+    b.hidden = how !== "prompt";
+    t.textContent = isStandalone ? "Installed. You're using it from the home screen." :
+      inArtifact ? "This is the preview on claude.ai. The installable version is the one hosted from your GitHub repository." :
+      how === "ios" ? "In Safari: Share, then Add to Home Screen. On iPhone the home-screen app uses the keyboard's microphone key for dictation." :
+      how === "prompt" ? "Install it to open full screen from the home screen." :
+      "Use your browser menu: Add to Home screen / Install app.";
+  }
+  $("#installBtn").addEventListener("click", promptInstall);
+  renderInstallText();
+
+  // ---------- toast ----------
+  function toast(text, opts) {
+    var el = $("#toast"), act = $("#toastAction");
+    $("#toastText").textContent = text;
+    toastUndo = opts && opts.action ? opts.action : null;
+    act.hidden = !toastUndo; act.textContent = (opts && opts.label) || "Undo";
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.hidden = true; }, toastUndo ? 7000 : 3000);
+  }
+  $("#toastAction").addEventListener("click", function () { if (toastUndo) toastUndo(); toastUndo = null; $("#toast").hidden = true; });
+
+  // ---------- startup ----------
+  if (!SR && !inArtifact) status("No voice input in this browser. Type it below.");
+  if (isIOS && isStandalone) status("Tap the mic, or use the keyboard's mic key");
+  if ("serviceWorker" in navigator && !inArtifact && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  }
+  renderAll();
+})();
+</script>
+<!-- ARTIFACT-END -->
+</body>
+</html>
