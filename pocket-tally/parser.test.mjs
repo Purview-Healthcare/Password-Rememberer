@@ -15,7 +15,7 @@ const cases = [
   // [spoken text, item, amount, category, currency?, dayOffset?]
   ["coffee 4.50", "Coffee", 4.5, "food"],
   ["4.50 coffee", "Coffee", 4.5, "food"],
-  ["spent 120 on groceries at walmart", "Groceries at walmart", 120, "groceries"],
+  ["spent 120 on groceries at walmart", "Groceries at walmart", 120, "food"],
   ["I paid 45 for uber to the airport", "Uber to the airport", 45, "transport"],
   ["paid twenty five dollars for lunch", "Lunch", 25, "food", "USD"],
   ["lunch was twenty five bucks", "Lunch", 25, "food", "USD"],
@@ -23,17 +23,17 @@ const cases = [
   ["rs. 500 for medicines", "Medicines", 500, "health", "INR"],
   ["₹1,200 rent", "Rent", 1200, "bills", "INR"],
   ["$20 at the pharmacy", "Pharmacy", 20, "health", "USD"],
-  ["bought 2 tickets for 30", "2 tickets", 30, "fun"],
+  ["bought 2 tickets for 30", "2 tickets", 30, "shopping"],
   ["2 coffees for 8 dollars", "2 coffees", 8, "food", "USD"],
   ["netflix subscription 15.99", "Netflix subscription", 15.99, "bills"],
   ["1.5k on new shoes", "New shoes", 1500, "shopping"],
   ["electricity bill one thousand two hundred", "Electricity bill", 1200, "bills"],
-  ["gave 50 to the plumber yesterday", "Plumber", 50, "home", null, -1],
-  ["movie tickets last night 24", "Movie tickets", 24, "fun", null, -1],
+  ["gave 50 to the plumber yesterday", "Plumber", 50, "bills", null, -1],
+  ["movie tickets last night 24", "Movie tickets", 24, "shopping", null, -1],
   ["four dollars and fifty cents for a donut", "Donut", 4.5, "food", "USD"],
   ["50 cents parking", "Parking", 0.5, "transport"],
   ["parking at 5 pm cost 12", "Parking at 5 pm", 12, "transport"],
-  ["a hundred bucks groceries", "Groceries", 100, "groceries", "USD"],
+  ["a hundred bucks groceries", "Groceries", 100, "food", "USD"],
   ["Uber 12.3", "Uber", 12.3, "transport"],
   ["dinner at olive garden 86.40", "Dinner at olive garden", 86.4, "food"],
   ["three lakh for the car", "Car", 300000, "other"],
@@ -42,8 +42,8 @@ const cases = [
   ["spent four point five on chai", "Chai", 4.5, "food"],
   ["headphones from amazon 2999", "Headphones from amazon", 2999, "shopping"],
   ["ice cream 3", "Ice cream", 3, "food"],
-  ["fish and chips 12", "Fish and chips", 12, "other"],
-  ["paid 100 for groceries and vegetables", "Groceries and vegetables", 100, "groceries"],
+  ["fish and chips 12", "Fish and chips", 12, "food"],
+  ["paid 100 for groceries and vegetables", "Groceries and vegetables", 100, "food"],
 ];
 
 for (const [text, item, amount, category, currency, dayOffset] of cases) {
@@ -81,10 +81,37 @@ test("item only -> amount null", () => {
 });
 
 test("learned categories win over keywords", () => {
-  const e = one("chai", { chai: "home" });
-  assert.equal(e.category, "home");
-  const e2 = one("morning chai at the stall 20", { chai: "home" });
-  assert.equal(e2.category, "home");
+  const e = one("chai", { chai: "bills" });
+  assert.equal(e.category, "bills");
+  const e2 = one("morning chai at the stall 20", { chai: "bills" });
+  assert.equal(e2.category, "bills");
+});
+
+test("income is detected and categorised as income", () => {
+  for (const [text, item, amount] of [
+    ["salary received 69000", "Salary", 69000],
+    ["received 500 refund from amazon", "Refund from amazon", 500],
+    ["+250 cashback", "Cashback", 250],
+    ["cash on hand 5000", "Cash on hand", 5000],
+  ]) {
+    const e = one(text);
+    assert.equal(e.kind, "income", text);
+    assert.equal(e.category, "income", text);
+    assert.equal(e.item, item, text);
+    assert.equal(e.amount, amount, text);
+  }
+  assert.equal(one("paid 45 for uber").kind, "expense");
+});
+
+test("payments, savings and family categories", () => {
+  assert.equal(one("lazypay 6734.02").category, "payments");
+  assert.equal(one("paid cred bill 7518").category, "payments");
+  assert.equal(one("mutual fund 2500").category, "savings");
+  assert.equal(one("sent 4700 to dad").item, "Dad");
+  assert.equal(one("sent 4700 to dad").category, "family");
+  assert.equal(one("protein shake and pasta 290").category, "food");
+  assert.equal(one("laundry 207").category, "bills");
+  assert.equal(one("cab ride 85").category, "transport");
 });
 
 test("wordsToDigits", () => {

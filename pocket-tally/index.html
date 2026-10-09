@@ -38,12 +38,12 @@
   --toast-action: #8fe0bf;
   --cat-transport: #2a78d6;
   --cat-food: #eb6834;
-  --cat-groceries: #1baf7a;
-  --cat-fun: #eda100;
-  --cat-shopping: #e87ba4;
-  --cat-home: #008300;
+  --cat-savings: #1baf7a;
+  --cat-shopping: #eda100;
+  --cat-family: #e87ba4;
+  --cat-health: #008300;
   --cat-bills: #4a3aa7;
-  --cat-health: #e34948;
+  --cat-payments: #e34948;
   --cat-other: #898781;
   --font-ui: "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-num: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -55,8 +55,8 @@
     --bg: #0f1412; --surface: #1a211d; --surface-2: #242d28; --ink: #e9eeea; --ink-2: #aab5ae; --ink-3: #7d887f;
     --line: #2a342e; --accent: #5fd3a8; --accent-ink: #0f1412; --accent-soft: #1d3a2f; --danger: #f0905f; --danger-soft: #3b2419;
     --toast-bg: #e9eeea; --toast-fg: #0f1412; --toast-action: #1f7a5c;
-    --cat-transport: #3987e5; --cat-food: #d95926; --cat-groceries: #199e70; --cat-fun: #c98500; --cat-shopping: #d55181;
-    --cat-home: #008300; --cat-bills: #9085e9; --cat-health: #e66767; --cat-other: #898781;
+    --cat-transport: #3987e5; --cat-food: #d95926; --cat-savings: #199e70; --cat-shopping: #c98500; --cat-family: #d55181;
+    --cat-health: #008300; --cat-bills: #9085e9; --cat-payments: #e66767; --cat-other: #898781;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px -14px rgba(0, 0, 0, 0.6);
     color-scheme: dark;
   }
@@ -65,8 +65,8 @@
   --bg: #0f1412; --surface: #1a211d; --surface-2: #242d28; --ink: #e9eeea; --ink-2: #aab5ae; --ink-3: #7d887f;
   --line: #2a342e; --accent: #5fd3a8; --accent-ink: #0f1412; --accent-soft: #1d3a2f; --danger: #f0905f; --danger-soft: #3b2419;
   --toast-bg: #e9eeea; --toast-fg: #0f1412; --toast-action: #1f7a5c;
-  --cat-transport: #3987e5; --cat-food: #d95926; --cat-groceries: #199e70; --cat-fun: #c98500; --cat-shopping: #d55181;
-  --cat-home: #008300; --cat-bills: #9085e9; --cat-health: #e66767; --cat-other: #898781;
+  --cat-transport: #3987e5; --cat-food: #d95926; --cat-savings: #199e70; --cat-shopping: #c98500; --cat-family: #d55181;
+  --cat-health: #008300; --cat-bills: #9085e9; --cat-payments: #e66767; --cat-other: #898781;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px -14px rgba(0, 0, 0, 0.6);
   color-scheme: dark;
 }
@@ -143,14 +143,17 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
 .chip.active { background: var(--accent-soft); color: var(--ink); border-color: var(--accent); }
 .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--cat-other); }
 .dot[data-cat="food"], .dotc-food { background: var(--cat-food); }
-.dot[data-cat="groceries"], .dotc-groceries { background: var(--cat-groceries); }
 .dot[data-cat="transport"], .dotc-transport { background: var(--cat-transport); }
 .dot[data-cat="bills"], .dotc-bills { background: var(--cat-bills); }
 .dot[data-cat="shopping"], .dotc-shopping { background: var(--cat-shopping); }
 .dot[data-cat="health"], .dotc-health { background: var(--cat-health); }
-.dot[data-cat="fun"], .dotc-fun { background: var(--cat-fun); }
-.dot[data-cat="home"], .dotc-home { background: var(--cat-home); }
+.dot[data-cat="payments"], .dotc-payments { background: var(--cat-payments); }
+.dot[data-cat="savings"], .dotc-savings { background: var(--cat-savings); }
+.dot[data-cat="family"], .dotc-family { background: var(--cat-family); }
 .dot[data-cat="other"], .dotc-other { background: var(--cat-other); }
+.dot[data-cat="income"], .dotc-income { background: var(--accent); }
+.entry-amt.income { color: var(--accent); }
+.seg.small button { padding: 6px 4px; font-size: 13px; }
 
 /* entries */
 .entries { list-style: none; margin: 0; padding: 0; }
@@ -245,9 +248,9 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     <!-- ADD -->
     <section id="view-add" class="view">
       <div class="hero">
-        <div class="eyebrow">Today</div>
-        <div class="hero-amount num" id="todayTotal">0</div>
-        <div class="hero-sub" id="todaySub">Nothing yet today.</div>
+        <div class="eyebrow" id="heroLabel">Today</div>
+        <div class="hero-amount num" id="heroAmount">0</div>
+        <div class="hero-sub" id="heroSub">Nothing yet today.</div>
       </div>
 
       <div class="capture">
@@ -267,6 +270,7 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
           <button type="button">spent 120 on groceries</button>
           <button type="button">uber 15 yesterday</button>
           <button type="button">lunch 12 and parking 5</button>
+          <button type="button">salary received 69000</button>
         </div>
       </div>
 
@@ -302,6 +306,7 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
           <div class="stat"><b id="statPerDay">0</b><span>per day</span></div>
           <div class="stat"><b id="statCount">0</b><span>purchases</span></div>
           <div class="stat"><b id="statBiggest">0</b><span id="statBiggestLabel">biggest</span></div>
+          <div class="stat" id="statReceivedWrap" hidden><b id="statReceived">0</b><span>received</span></div>
         </div>
       </div>
       <div class="card">
@@ -341,12 +346,16 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     <form class="panel" id="editForm">
       <div class="grip"></div>
       <div class="panel-head"><h2 id="editTitle">Edit purchase</h2><button type="button" class="btn small" id="editCancel">Close</button></div>
+      <div class="seg small" id="editKind" role="group" aria-label="Type">
+        <button type="button" data-kind="expense" class="active">Spent</button>
+        <button type="button" data-kind="income">Received</button>
+      </div>
       <div class="field"><label for="editItem">What</label><input id="editItem" type="text" required></div>
       <div class="two">
         <div class="field"><label for="editAmount">Amount</label><input id="editAmount" class="num" type="number" inputmode="decimal" step="0.01" min="0" required></div>
         <div class="field"><label for="editDate">Date</label><input id="editDate" type="date" required></div>
       </div>
-      <div class="field"><label>Category</label><div class="chips" id="editChips"></div></div>
+      <div class="field" id="editCatField"><label>Category</label><div class="chips" id="editChips"></div></div>
       <div class="field"><label for="editNote">Note</label><input id="editNote" type="text" placeholder="optional"></div>
       <div class="actions">
         <button type="button" class="btn danger" id="editDelete">Delete</button>
@@ -384,6 +393,11 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
           <label class="btn small" for="restoreFile" style="display:inline-flex;align-items:center">Restore backup<input id="restoreFile" type="file" accept="application/json,.json" hidden></label>
         </div>
         <textarea id="exportBox" class="code" hidden readonly aria-label="Exported data"></textarea>
+        <details>
+          <summary style="cursor:pointer;font-size:14px;color:var(--ink-2)">Paste a backup instead</summary>
+          <div class="field" style="margin-top:8px"><textarea id="pasteBox" class="code" placeholder="Paste the backup text here" aria-label="Backup text"></textarea></div>
+          <div class="actions" style="margin-top:8px"><button type="button" class="btn small" id="restorePaste">Restore pasted backup</button></div>
+        </details>
       </div>
       <div class="settings-row">
         <div class="actions"><button type="button" class="btn small danger" id="clearAll">Delete everything</button></div>
@@ -526,10 +540,25 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
   var searchQuery = "";
 
   function onEntries(list) {
-    entries = list.map(function (e) { return Object.assign({ category: "other", note: "", currency: settings.currency }, e, { amount: Number(e.amount) || 0 }); });
+    entries = list.map(function (e) {
+      var x = Object.assign({ category: "other", note: "", currency: settings.currency, kind: "expense" }, e, { amount: Number(e.amount) || 0 });
+      if (x.kind !== "income") x.kind = "expense";
+      x.category = x.kind === "income" ? "income" : (P.LEGACY_CATEGORY[x.category] || (P.CATEGORY_BY_ID[x.category] && x.category !== "income" ? x.category : "other"));
+      return x;
+    });
     entries.sort(function (a, b) { return (b.date > a.date ? 1 : b.date < a.date ? -1 : 0) || (b.ts || 0) - (a.ts || 0); });
+    adoptCurrency();
     renderAll();
   }
+  // Show amounts in the currency the entries were recorded in, until the user picks one explicitly.
+  function adoptCurrency() {
+    if (!settings.currencyAuto || !entries.length) return;
+    var counts = {}, best = null;
+    entries.forEach(function (e) { if (e.currency) { counts[e.currency] = (counts[e.currency] || 0) + 1; if (!best || counts[e.currency] > counts[best]) best = e.currency; } });
+    if (best && best !== settings.currency) { settings.currency = best; fmtCache = {}; saveSettings(); syncSettingsUI(); }
+  }
+  function isSpend(e) { return e.kind !== "income"; }
+  function balance() { return entries.reduce(function (s, e) { return s + (e.kind === "income" ? e.amount : -e.amount); }, 0); }
 
   // ---------- views ----------
   function showView(v) {
@@ -551,20 +580,29 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
 
   // ---------- Add ----------
   function entryRow(e) {
+    var inc = e.kind === "income";
     return '<li class="entry" data-id="' + esc(e.id) + '" role="button" tabindex="0">' +
-      '<span class="dot" data-cat="' + esc(e.category) + '"></span>' +
+      '<span class="dot" data-cat="' + esc(inc ? "income" : e.category) + '"></span>' +
       '<div class="entry-main"><div class="entry-item">' + esc(e.item || "Untitled") + '</div>' +
-      '<div class="entry-meta">' + esc(catLabel(e.category)) + (e.note ? " · " + esc(e.note) : "") + (e.ts && e.date === todayStr() ? " · " + esc(timeLabel(e.ts)) : "") + "</div></div>" +
-      '<div class="entry-amt">' + esc(money(e.amount)) + "</div></li>";
+      '<div class="entry-meta">' + esc(inc ? "Received" : catLabel(e.category)) + (e.note ? " · " + esc(e.note) : "") + (e.ts && e.date === todayStr() ? " · " + esc(timeLabel(e.ts)) : "") + "</div></div>" +
+      '<div class="entry-amt' + (inc ? " income" : "") + '">' + (inc ? "+" : "") + esc(money(e.amount)) + "</div></li>";
   }
   function renderAdd() {
     var today = todayStr();
-    var todays = entries.filter(function (e) { return e.date === today; });
-    var total = todays.reduce(function (s, e) { return s + e.amount; }, 0);
-    $("#todayTotal").textContent = money(total);
+    var todays = entries.filter(function (e) { return e.date === today && isSpend(e); });
+    var total = sum(todays);
     var monthStart = today.slice(0, 7) + "-01";
-    var monthTotal = entries.filter(function (e) { return e.date >= monthStart && e.date <= today; }).reduce(function (s, e) { return s + e.amount; }, 0);
-    $("#todaySub").textContent = (todays.length ? todays.length + (todays.length === 1 ? " purchase today" : " purchases today") : "Nothing yet today") + " · " + money(monthTotal) + " this month";
+    var monthTotal = sum(entries.filter(function (e) { return isSpend(e) && e.date >= monthStart && e.date <= today; }));
+    var hasIncome = entries.some(function (e) { return e.kind === "income"; });
+    if (hasIncome) {
+      $("#heroLabel").textContent = "Balance";
+      $("#heroAmount").textContent = money(balance());
+      $("#heroSub").textContent = "Spent " + money(total) + " today · " + money(monthTotal) + " this month";
+    } else {
+      $("#heroLabel").textContent = "Today";
+      $("#heroAmount").textContent = money(total);
+      $("#heroSub").textContent = (todays.length ? todays.length + (todays.length === 1 ? " purchase today" : " purchases today") : "Nothing yet today") + " · " + money(monthTotal) + " this month";
+    }
     var recent = entries.slice(0, 6);
     $("#recentList").innerHTML = recent.map(entryRow).join("");
     $("#recentEmpty").hidden = recent.length > 0;
@@ -658,9 +696,10 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
   }
   function saveParsed(e) {
     if (settings.currencyAuto && e.currency && e.currency !== settings.currency) { settings.currency = e.currency; fmtCache = {}; saveSettings(); syncSettingsUI(); }
-    var entry = { id: uid(), item: e.item, amount: e.amount, currency: e.currency || settings.currency, category: e.category || "other", date: todayStr(e.dayOffset || 0), ts: Date.now(), note: "", raw: e.raw || "" };
+    var kind = e.kind === "income" ? "income" : "expense";
+    var entry = { id: uid(), kind: kind, item: e.item, amount: e.amount, currency: e.currency || settings.currency, category: kind === "income" ? "income" : (e.category || "other"), date: todayStr(e.dayOffset || 0), ts: Date.now(), note: "", raw: e.raw || "" };
     return storeReady.then(function () { return store.add(entry); }).then(function () {
-      toast("Saved · " + entry.item + " · " + money(entry.amount), { label: "Undo", action: function () { store.remove(entry.id); } });
+      toast((kind === "income" ? "Received · " : "Saved · ") + entry.item + " · " + (kind === "income" ? "+" : "") + money(entry.amount), { label: "Undo", action: function () { store.remove(entry.id); } });
       showTranscript("", false);
     });
   }
@@ -669,20 +708,27 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
   function showPending(e) {
     var box = $("#pending");
     var needAmount = e.amount == null, needItem = !e.item;
-    var cats = P.CATEGORIES.map(function (c) { return '<button type="button" class="chip' + (c.id === e.category ? " active" : "") + '" data-cat="' + c.id + '"><span class="dot" data-cat="' + c.id + '"></span>' + esc(c.label) + "</button>"; }).join("");
+    var cats = P.CATEGORIES.filter(function (c) { return c.id !== "income"; }).map(function (c) { return '<button type="button" class="chip' + (c.id === e.category ? " active" : "") + '" data-cat="' + c.id + '"><span class="dot" data-cat="' + c.id + '"></span>' + esc(c.label) + "</button>"; }).join("");
+    var kind = e.kind === "income" ? "income" : "expense";
     box.innerHTML =
       "<p>" + (needAmount && needItem ? "I couldn't make that out. Fill in what and how much." : needAmount ? "How much was <b>" + esc(e.item) + "</b>?" : "What was <b>" + esc(money(e.amount)) + "</b> for?") + "</p>" +
+      '<div class="seg small" id="pKind"><button type="button" data-kind="expense"' + (kind === "expense" ? ' class="active"' : "") + '>Spent</button><button type="button" data-kind="income"' + (kind === "income" ? ' class="active"' : "") + '>Received</button></div>' +
       '<div class="two">' +
       '<div class="field"><label for="pItem">What</label><input id="pItem" type="text" value="' + esc(e.item) + '"></div>' +
       '<div class="field"><label for="pAmount">Amount</label><input id="pAmount" class="num" type="number" inputmode="decimal" step="0.01" min="0" value="' + (e.amount != null ? e.amount : "") + '"></div>' +
       "</div>" +
-      '<div class="chips" id="pChips">' + cats + "</div>" +
+      '<div class="chips" id="pChips"' + (kind === "income" ? " hidden" : "") + '>' + cats + "</div>" +
       '<div class="actions"><button type="button" class="btn small" id="pCancel">Cancel</button><span class="spacer"></span><button type="button" class="btn small primary" id="pSave">Save</button></div>';
     box.hidden = false;
     var cat = e.category || "other", catTouched = false;
     $("#pChips").addEventListener("click", function (ev) {
       var b = ev.target.closest(".chip"); if (!b) return;
       cat = b.dataset.cat; catTouched = true; $$("#pChips .chip").forEach(function (c) { c.classList.toggle("active", c === b); });
+    });
+    $("#pKind").addEventListener("click", function (ev) {
+      var b = ev.target.closest("button[data-kind]"); if (!b) return;
+      kind = b.dataset.kind; $$("#pKind button").forEach(function (x) { x.classList.toggle("active", x === b); });
+      $("#pChips").hidden = kind === "income";
     });
     $("#pCancel").addEventListener("click", function () { box.hidden = true; box.innerHTML = ""; showTranscript("", false); });
     function save() {
@@ -691,7 +737,7 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
       if (!(amount >= 0)) { $("#pAmount").focus(); return; }
       box.hidden = true; box.innerHTML = "";
       if (!catTouched) cat = P.categorize(item, settings.learned);
-      saveParsed({ item: item, amount: amount, currency: e.currency, category: cat, dayOffset: e.dayOffset, raw: e.raw });
+      saveParsed({ item: item, amount: amount, currency: e.currency, category: cat, kind: kind, dayOffset: e.dayOffset, raw: e.raw });
     }
     $("#pSave").addEventListener("click", save);
     box.addEventListener("keydown", function (ev) { if (ev.key === "Enter") { ev.preventDefault(); save(); } });
@@ -706,9 +752,9 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     $("#historyEmpty").hidden = list.length > 0;
     $("#historyEmpty").textContent = searchQuery ? "Nothing matches “" + searchQuery + "”." : "No purchases yet. Add one from the Add tab.";
     var groups = [], map = {};
-    list.forEach(function (e) { if (!map[e.date]) { map[e.date] = { date: e.date, items: [], total: 0 }; groups.push(map[e.date]); } map[e.date].items.push(e); map[e.date].total += e.amount; });
+    list.forEach(function (e) { if (!map[e.date]) { map[e.date] = { date: e.date, items: [], total: 0, received: 0 }; groups.push(map[e.date]); } map[e.date].items.push(e); if (isSpend(e)) map[e.date].total += e.amount; else map[e.date].received += e.amount; });
     $("#historyList").innerHTML = groups.map(function (g) {
-      return '<div class="day-head"><h3>' + esc(dayLabel(g.date)) + '</h3><span class="day-total">' + esc(money(g.total)) + "</span></div>" +
+      return '<div class="day-head"><h3>' + esc(dayLabel(g.date)) + '</h3><span class="day-total">' + (g.received ? "+" + esc(money(g.received)) + " · " : "") + esc(money(g.total)) + "</span></div>" +
         '<ul class="entries">' + g.items.map(entryRow).join("") + "</ul>";
     }).join("");
   }
@@ -733,7 +779,11 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
 
   function renderInsights() {
     var r = periodRange(period);
-    var list = entries.filter(function (e) { return inRange(e, r.start, r.end); });
+    var all = entries.filter(function (e) { return inRange(e, r.start, r.end); });
+    var list = all.filter(isSpend);
+    var received = sum(all.filter(function (e) { return !isSpend(e); }));
+    $("#statReceivedWrap").hidden = !received;
+    $("#statReceived").textContent = "+" + money(received);
     var total = sum(list);
     $("#periodLabel").textContent = r.label;
     $("#periodTotal").textContent = money(total);
@@ -750,7 +800,7 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     // delta vs previous
     var deltaEl = $("#periodDelta");
     if (r.prevStart) {
-      var prev = sum(entries.filter(function (e) { return inRange(e, r.prevStart, r.prevEnd); }));
+      var prev = sum(entries.filter(function (e) { return isSpend(e) && inRange(e, r.prevStart, r.prevEnd); }));
       if (prev > 0 && total > 0) { var pct = Math.round((total - prev) / prev * 100); deltaEl.textContent = (pct >= 0 ? "+" : "") + pct + "% compared with " + r.prevLabel + " (" + money(prev) + ")"; }
       else if (prev > 0) deltaEl.textContent = "Nothing yet. " + money(prev) + " " + r.prevLabel + ".";
       else deltaEl.textContent = list.length ? "No spending recorded " + r.prevLabel + " to compare with." : "Nothing recorded in this period.";
@@ -837,10 +887,17 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
   }
 
   // ---------- Edit sheet ----------
-  var editCat = "other", deleteArmed = null;
+  var editCat = "other", editKind = "expense", deleteArmed = null;
+  function setEditKind(k) {
+    editKind = k === "income" ? "income" : "expense";
+    $$("#editKind button").forEach(function (b) { b.classList.toggle("active", b.dataset.kind === editKind); });
+    $("#editCatField").hidden = editKind === "income";
+  }
+  $("#editKind").addEventListener("click", function (ev) { var b = ev.target.closest("button[data-kind]"); if (b) setEditKind(b.dataset.kind); });
   function openEdit(id) {
     var e = entries.find(function (x) { return x.id === id; }); if (!e) return;
-    editingId = id; editCat = e.category || "other";
+    editingId = id; editCat = e.kind === "income" ? "other" : (e.category || "other");
+    setEditKind(e.kind);
     $("#editItem").value = e.item || "";
     $("#editAmount").value = e.amount;
     $("#editDate").value = e.date;
@@ -850,7 +907,7 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     $("#editSheet").hidden = false;
   }
   function renderEditChips() {
-    $("#editChips").innerHTML = P.CATEGORIES.map(function (c) { return '<button type="button" class="chip' + (c.id === editCat ? " active" : "") + '" data-cat="' + c.id + '"><span class="dot" data-cat="' + c.id + '"></span>' + esc(c.label) + "</button>"; }).join("");
+    $("#editChips").innerHTML = P.CATEGORIES.filter(function (c) { return c.id !== "income"; }).map(function (c) { return '<button type="button" class="chip' + (c.id === editCat ? " active" : "") + '" data-cat="' + c.id + '"><span class="dot" data-cat="' + c.id + '"></span>' + esc(c.label) + "</button>"; }).join("");
   }
   $("#editChips").addEventListener("click", function (ev) { var b = ev.target.closest(".chip"); if (!b) return; editCat = b.dataset.cat; renderEditChips(); });
   function closeEdit() { $("#editSheet").hidden = true; editingId = null; }
@@ -862,11 +919,11 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     var item = $("#editItem").value.trim(), amount = parseFloat($("#editAmount").value), date = $("#editDate").value, note = $("#editNote").value.trim();
     if (!item || !(amount >= 0) || !date) return;
     var key = P.normalizeKey(item);
-    if (key) {
+    if (key && editKind === "expense") {
       if (P.categorize(item) !== editCat) settings.learned[key] = editCat; else delete settings.learned[key];
       saveSettings();
     }
-    store.update(id, { item: item, amount: Math.round(amount * 100) / 100, date: date, note: note, category: editCat });
+    store.update(id, { item: item, amount: Math.round(amount * 100) / 100, date: date, note: note, kind: editKind, category: editKind === "income" ? "income" : editCat });
     closeEdit();
     toast("Updated");
   });
@@ -900,7 +957,7 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
   }
 
   function toCsv() {
-    var rows = [["date", "item", "amount", "currency", "category", "note"]].concat(entries.slice().reverse().map(function (e) { return [e.date, e.item, e.amount, e.currency || settings.currency, catLabel(e.category), e.note || ""]; }));
+    var rows = [["date", "type", "item", "amount", "currency", "category", "note"]].concat(entries.slice().reverse().map(function (e) { return [e.date, e.kind === "income" ? "received" : "spent", e.item, e.amount, e.currency || settings.currency, catLabel(e.category), e.note || ""]; }));
     return rows.map(function (r) { return r.map(function (v) { v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(","); }).join("\n");
   }
   function toBackup() { return JSON.stringify({ app: "pocket-tally", version: 1, exported: new Date().toISOString(), currency: settings.currency, learned: settings.learned, entries: entries }, null, 2); }
@@ -920,24 +977,36 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
   $("#exportCsv").addEventListener("click", function () { download("pocket-tally-" + todayStr() + ".csv", toCsv(), "text/csv"); });
   $("#copyCsv").addEventListener("click", function () { copyText(toCsv()); });
   $("#exportJson").addEventListener("click", function () { download("pocket-tally-backup-" + todayStr() + ".json", toBackup(), "application/json"); });
+  function restoreFromText(text) {
+    try {
+      var data = JSON.parse(text);
+      var list = Array.isArray(data) ? data : data.entries;
+      if (!Array.isArray(list)) throw new Error("no entries");
+      var valid = list.filter(function (e) { return e && typeof e.item === "string" && isFinite(Number(e.amount)) && /^\d{4}-\d{2}-\d{2}$/.test(String(e.date)); })
+        .map(function (e) {
+          var kind = e.kind === "income" ? "income" : "expense";
+          var cat = kind === "income" ? "income" : (P.LEGACY_CATEGORY[e.category] || (P.CATEGORY_BY_ID[e.category] && e.category !== "income" ? e.category : "other"));
+          return { id: String(e.id || uid()), kind: kind, item: e.item, amount: Number(e.amount), currency: e.currency || settings.currency, category: cat, date: e.date, ts: Number(e.ts) || parseDate(e.date).getTime(), note: e.note || "", raw: e.raw || "" };
+        });
+      var merged = entries.slice(), added = 0;
+      valid.forEach(function (e) { if (!merged.some(function (x) { return x.id === e.id; })) { merged.push(e); added++; } });
+      if (data.learned && typeof data.learned === "object") { Object.assign(settings.learned, data.learned); saveSettings(); }
+      if (data.currency && settings.currencyAuto) { settings.currency = data.currency; fmtCache = {}; saveSettings(); syncSettingsUI(); }
+      store.replaceAll(merged).then(function () { toast("Restored " + added + " entr" + (added === 1 ? "y" : "ies")); });
+    } catch (e) { toast("That isn't a Pocket Tally backup."); }
+  }
   $("#restoreFile").addEventListener("change", function () {
     var file = this.files && this.files[0]; if (!file) return;
     var reader = new FileReader();
-    reader.onload = function () {
-      try {
-        var data = JSON.parse(reader.result);
-        var list = Array.isArray(data) ? data : data.entries;
-        if (!Array.isArray(list)) throw new Error("no entries");
-        var valid = list.filter(function (e) { return e && typeof e.item === "string" && isFinite(Number(e.amount)) && /^\d{4}-\d{2}-\d{2}$/.test(String(e.date)); })
-          .map(function (e) { return { id: String(e.id || uid()), item: e.item, amount: Number(e.amount), currency: e.currency || settings.currency, category: P.CATEGORY_BY_ID[e.category] ? e.category : "other", date: e.date, ts: Number(e.ts) || parseDate(e.date).getTime(), note: e.note || "", raw: e.raw || "" }; });
-        var merged = entries.slice(), added = 0;
-        valid.forEach(function (e) { if (!merged.some(function (x) { return x.id === e.id; })) { merged.push(e); added++; } });
-        if (data.learned && typeof data.learned === "object") { Object.assign(settings.learned, data.learned); saveSettings(); }
-        store.replaceAll(merged).then(function () { toast("Restored " + added + " purchase" + (added === 1 ? "" : "s")); });
-      } catch (e) { toast("That file isn't a Pocket Tally backup."); }
-    };
+    reader.onload = function () { restoreFromText(reader.result); };
     reader.readAsText(file);
     this.value = "";
+  });
+  $("#restorePaste").addEventListener("click", function () {
+    var text = $("#pasteBox").value.trim();
+    if (!text) { $("#pasteBox").focus(); return; }
+    restoreFromText(text);
+    $("#pasteBox").value = "";
   });
   var clearArmed = false;
   $("#clearAll").addEventListener("click", function () {

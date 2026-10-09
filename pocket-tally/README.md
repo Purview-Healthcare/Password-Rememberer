@@ -15,6 +15,8 @@ It is a small web app that installs to the home screen on **both Android and iPh
 
 Amounts can be digits or words ("two hundred and fifty", "1.5k", "four dollars fifty"). Saying "rupees" or "dollars" the first time sets the currency; you can also pick it in Settings.
 
+Money coming in works too: **"salary received 69000"**, **"cash on hand 5000"** or **"+500 refund"** are saved as received, and once there is any income the home screen shows your running **balance** (received minus spent). Spending groups: Food & Groceries, Transport, Bills & Home, Shopping & Fun, Health, Payments & Loans (credit cards, BNPL, EMIs), Savings & Investments, Family, Other.
+
 ## Put it on your phone
 
 The app has to be served over HTTPS for the microphone and for installing. The simplest free option is GitHub Pages:
@@ -46,7 +48,7 @@ Then on the phone:
 
 ## Your data
 
-Purchases are stored in the browser's local storage on the device. Use **Settings → Download backup** now and then, and **Restore backup** on a new phone. **Download CSV** gives a spreadsheet-friendly export.
+Purchases are stored in the browser's local storage on the device. Use **Settings → Download backup** now and then, and **Restore backup** (or **Paste a backup**) on a new phone. **Download CSV** gives a spreadsheet-friendly export.
 
 ## Running locally
 

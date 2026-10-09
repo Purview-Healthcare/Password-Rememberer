@@ -12,44 +12,52 @@
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
-  // ---------- categories (8 colored slots + Other) ----------
+  // ---------- categories (8 colored groups + Other; Income is a kind, not a spend group) ----------
   var CATEGORIES = [
-    { id: "groceries", label: "Groceries", keywords: [
-      "grocery", "groceries", "supermarket", "walmart", "costco", "kroger", "aldi", "lidl", "tesco",
-      "sainsbury", "sainsburys", "asda", "safeway", "publix", "wegmans", "whole foods", "trader joes",
-      "trader joe's", "bigbasket", "big basket", "dmart", "d mart", "reliance fresh", "blinkit", "zepto",
-      "instamart", "vegetables", "veggies", "fruits", "fruit", "milk", "eggs", "bread", "rice", "flour",
-      "atta", "dal", "produce", "market", "sabzi", "provisions", "ration"
-    ] },
-    { id: "food", label: "Food & Drink", keywords: [
+    { id: "food", label: "Food & Groceries", keywords: [
       "coffee", "tea", "chai", "latte", "cappuccino", "espresso", "lunch", "dinner", "breakfast", "brunch",
       "restaurant", "pizza", "burger", "burgers", "sandwich", "snack", "snacks", "starbucks", "mcdonalds",
       "mcdonald's", "subway", "kfc", "dominos", "domino's", "cafe", "café", "canteen", "takeout", "takeaway",
       "swiggy", "zomato", "doordash", "ubereats", "uber eats", "grubhub", "deliveroo", "drinks", "beer",
       "wine", "bar", "pub", "biryani", "dosa", "idli", "samosa", "thali", "noodles", "sushi", "tacos",
-      "food", "meal", "juice", "smoothie", "dessert", "ice cream", "cake", "chocolate", "bakery", "donut",
-      "donuts", "boba", "bubble tea", "water bottle", "soda", "cola"
+      "food", "meal", "meals", "juice", "smoothie", "dessert", "ice cream", "cake", "chocolate", "bakery",
+      "donut", "donuts", "boba", "bubble tea", "water bottle", "soda", "cola", "poori", "puri", "bonda",
+      "vada", "shawarma", "horlicks", "bournvita", "maggi", "roti", "chapati", "paratha", "curry", "tiffin",
+      "biscuits", "chips", "protein shake", "protein shakes", "shake", "pasta", "eggs", "milk", "bread",
+      "grocery", "groceries", "supermarket", "walmart", "costco", "kroger", "aldi", "lidl", "tesco",
+      "sainsbury", "sainsburys", "asda", "safeway", "publix", "wegmans", "whole foods", "trader joes",
+      "trader joe's", "bigbasket", "big basket", "dmart", "d mart", "reliance fresh", "blinkit", "zepto",
+      "instamart", "vegetables", "veggies", "fruits", "fruit", "rice", "flour", "atta", "dal", "produce",
+      "market", "sabzi", "provisions", "ration"
     ] },
     { id: "transport", label: "Transport", keywords: [
-      "uber", "lyft", "ola", "taxi", "cab", "auto", "rickshaw", "bus", "train", "metro", "subway fare",
+      "uber", "lyft", "ola", "taxi", "cab", "cab ride", "auto", "rickshaw", "bus", "train", "metro", "subway fare",
       "tram", "fuel", "gas", "gasoline", "petrol", "diesel", "parking", "toll", "tolls", "flight",
       "flights", "airfare", "airline", "rapido", "car wash", "carwash", "bike", "scooter", "rental car",
       "car rental", "fastag", "commute", "ticket to", "railway", "irctc", "indigo", "ryanair", "transit"
     ] },
-    { id: "bills", label: "Bills & Utilities", keywords: [
+    { id: "bills", label: "Bills & Home", keywords: [
       "electricity", "electric", "power bill", "water bill", "internet", "wifi", "wi-fi", "broadband",
-      "phone bill", "mobile bill", "recharge", "rent", "insurance", "premium", "subscription", "emi",
-      "loan", "mortgage", "tax", "taxes", "bill", "bills", "utility", "utilities", "maintenance fee",
-      "society maintenance", "gas bill", "tuition", "school fees", "fees", "icloud", "google one",
-      "dropbox", "chatgpt", "claude", "netflix", "spotify", "prime", "hotstar", "disney", "hulu",
-      "youtube premium", "apple music"
+      "phone bill", "mobile bill", "recharge", "rent", "insurance", "premium", "subscription", "tax",
+      "taxes", "bill", "bills", "utility", "utilities", "maintenance fee", "society maintenance", "gas bill",
+      "tuition", "school fees", "fees", "icloud", "google one", "dropbox", "chatgpt", "claude", "netflix",
+      "spotify", "prime", "hotstar", "disney", "hulu", "youtube premium", "apple music",
+      "cleaning", "cleaner", "maid", "repair", "repairs", "plumber", "electrician", "carpenter", "laundry",
+      "dry cleaning", "detergent", "soap", "shampoo", "toilet paper", "tissues", "household", "kitchen",
+      "cookware", "appliance", "appliances", "garden", "gardening", "plants", "paint", "painting",
+      "hardware", "home depot", "lowes", "lowe's", "pest control", "curtains", "bedsheet", "pillow",
+      "mattress", "lightbulb", "bulb", "candles", "home"
     ] },
-    { id: "shopping", label: "Shopping", keywords: [
+    { id: "shopping", label: "Shopping & Fun", keywords: [
       "amazon", "flipkart", "myntra", "ajio", "ebay", "etsy", "clothes", "clothing", "shirt", "t-shirt",
       "tshirt", "shoes", "sneakers", "dress", "jeans", "jacket", "mall", "target", "ikea", "furniture",
       "electronics", "headphones", "earbuds", "charger", "cable", "gift", "gifts", "toy", "toys", "book",
       "books", "stationery", "watch", "bag", "backpack", "cosmetics", "makeup", "perfume", "shopping",
-      "best buy", "apple store", "phone case", "decathlon", "nike", "adidas", "zara", "h&m", "uniqlo"
+      "best buy", "apple store", "phone case", "decathlon", "nike", "adidas", "zara", "h&m", "uniqlo",
+      "movie", "movies", "cinema", "film", "pvr", "inox", "amc", "concert", "gig", "game", "games",
+      "gaming", "steam", "playstation", "xbox", "nintendo", "tickets", "show", "theatre", "theater",
+      "museum", "zoo", "park entry", "bowling", "arcade", "club", "party", "karaoke", "comedy", "match",
+      "stadium", "festival", "amusement", "hobby", "entertainment"
     ] },
     { id: "health", label: "Health", keywords: [
       "pharmacy", "chemist", "medicine", "medicines", "meds", "tablets", "doctor", "dentist", "dental",
@@ -57,21 +65,28 @@
       "walgreens", "boots", "medplus", "1mg", "pharmeasy", "checkup", "check-up", "lab test", "blood test",
       "therapy", "physio", "optician", "glasses", "contact lenses", "health"
     ] },
-    { id: "fun", label: "Entertainment", keywords: [
-      "movie", "movies", "cinema", "film", "pvr", "inox", "amc", "concert", "gig", "game", "games",
-      "gaming", "steam", "playstation", "xbox", "nintendo", "tickets", "show", "theatre", "theater",
-      "museum", "zoo", "park entry", "bowling", "arcade", "club", "party", "karaoke", "comedy", "match",
-      "stadium", "festival", "amusement", "hobby", "entertainment"
+    { id: "payments", label: "Payments & Loans", keywords: [
+      "lazypay", "lazy pay", "lazypay bill", "xpresscash", "xpress cash", "navi", "navi emi", "cred", "cred bill", "cred payment", "onecard", "one card", "onecard bill", "credit card",
+      "card payment", "card bill", "emi", "loan", "bnpl", "simpl", "slice", "postpaid", "paytm postpaid",
+      "pay later", "moneyview", "kreditbee", "zestmoney", "repayment", "repaid", "installment", "instalment",
+      "mortgage", "overdraft", "debt", "borrowed", "lent", "due payment", "minimum due"
     ] },
-    { id: "home", label: "Home", keywords: [
-      "cleaning", "cleaner", "maid", "repair", "repairs", "plumber", "electrician", "carpenter", "laundry",
-      "dry cleaning", "detergent", "soap", "shampoo", "toilet paper", "tissues", "household", "kitchen",
-      "cookware", "appliance", "appliances", "garden", "gardening", "plants", "paint", "painting",
-      "hardware", "home depot", "lowes", "lowe's", "pest control", "curtains", "bedsheet", "pillow",
-      "mattress", "lightbulb", "bulb", "candles", "home"
+    { id: "savings", label: "Savings & Investments", keywords: [
+      "mutual fund", "mutual funds", "mf", "sip", "savings", "saving", "investment", "invest", "invested",
+      "fd", "fixed deposit", "rd", "recurring deposit", "ppf", "nps", "stocks", "shares", "etf", "zerodha",
+      "groww", "kuvera", "sgb", "crypto", "bitcoin", "emergency fund", "allocation", "piggy bank"
     ] },
-    { id: "other", label: "Other", keywords: [] }
+    { id: "family", label: "Family", keywords: [
+      "dad", "mom", "mum", "papa", "mummy", "amma", "appa", "father", "mother", "parents", "brother",
+      "sister", "bro", "sis", "wife", "husband", "son", "daughter", "kids", "family", "grandma", "grandpa",
+      "home money", "pocket money"
+    ] },
+    { id: "other", label: "Other", keywords: [] },
+    { id: "income", label: "Income", keywords: [] }
   ];
+
+  // ids from the first release, folded into the groups above
+  var LEGACY_CATEGORY = { groceries: "food", home: "bills", fun: "shopping" };
 
   var CATEGORY_BY_ID = {};
   CATEGORIES.forEach(function (c) { CATEGORY_BY_ID[c.id] = c; });
@@ -256,8 +271,8 @@
   }
 
   // ---------- item cleanup ----------
-  var LEAD_FILLER = ["i", "i've", "ive", "i'd", "we", "just", "spent", "spend", "paid", "payed", "pay", "bought", "buy", "purchased", "got", "get", "picked", "up", "ordered", "booked", "took", "had", "have", "grabbed", "for", "on", "at", "a", "an", "the", "some", "my", "our", "about", "around", "approximately", "roughly", "it", "its", "it's", "was", "were", "is", "cost", "costs", "costed", "me", "us", "of", "to", "and", "worth", "total", "today", "then", "also", "another", "add", "please", "okay", "ok", "so", "um", "uh", "like", "went", "gave", "charged", "owe", "owed", "in", "from", "with", "this", "that", "there", "here", "note", "expense", "spending", "purchase", "payment", "rs", "rupees", "dollars", "bucks", "euros", "pounds", "cents", "each", "per", "only", "again", "yesterday", "tonight", "morning", "evening", "afternoon", "night"];
-  var TRAIL_FILLER = ["for", "on", "at", "of", "to", "a", "an", "the", "was", "were", "is", "cost", "costs", "costed", "each", "total", "in", "and", "about", "around", "approximately", "roughly", "rs", "rupees", "dollars", "bucks", "euros", "pounds", "only", "today", "yesterday", "tonight", "from", "with", "me", "us", "it", "please", "okay", "ok", "then", "worth", "per", "spent", "paid", "bought", "got", "this", "morning", "evening", "afternoon", "night", "last", "there", "here", "just", "so", "um", "uh", "like", "that"];
+  var LEAD_FILLER = ["i", "i've", "ive", "i'd", "we", "just", "spent", "spend", "paid", "payed", "pay", "bought", "buy", "purchased", "got", "get", "picked", "up", "ordered", "booked", "took", "had", "have", "grabbed", "for", "on", "at", "a", "an", "the", "some", "my", "our", "about", "around", "approximately", "roughly", "it", "its", "it's", "was", "were", "is", "cost", "costs", "costed", "me", "us", "of", "to", "and", "worth", "total", "today", "then", "also", "another", "add", "please", "okay", "ok", "so", "um", "uh", "like", "went", "gave", "sent", "transferred", "transfer", "repaid", "charged", "received", "credited", "earned", "owe", "owed", "in", "from", "with", "this", "that", "there", "here", "note", "expense", "spending", "purchase", "payment", "rs", "rupees", "dollars", "bucks", "euros", "pounds", "cents", "each", "per", "only", "again", "yesterday", "tonight", "morning", "evening", "afternoon", "night"];
+  var TRAIL_FILLER = ["for", "on", "at", "of", "to", "a", "an", "the", "was", "were", "is", "cost", "costs", "costed", "each", "total", "in", "and", "about", "around", "approximately", "roughly", "rs", "rupees", "dollars", "bucks", "euros", "pounds", "only", "today", "yesterday", "tonight", "from", "with", "me", "us", "it", "please", "okay", "ok", "then", "worth", "per", "spent", "paid", "bought", "got", "this", "morning", "evening", "afternoon", "night", "last", "there", "here", "just", "so", "um", "uh", "like", "that", "received", "credited", "earned"];
   var LEAD_SET = {}, TRAIL_SET = {};
   LEAD_FILLER.forEach(function (w) { LEAD_SET[w] = 1; });
   TRAIL_FILLER.forEach(function (w) { TRAIL_SET[w] = 1; });
@@ -309,6 +324,8 @@
   }
 
   // ---------- main ----------
+  var INCOME_RE = /\b(salary|salaries|received|got paid|paid me|income|credited|refund|refunded|cashback|cash back|bonus|cash (?:on|in) hand|opening balance|starting balance|brought forward|earned|reimbursed|reimbursement|stipend|dividend|interest received|sold|won)\b/;
+
   function preclean(raw) {
     return String(raw || "")
       .toLowerCase()
@@ -323,6 +340,8 @@
 
   function parseOne(raw) {
     var text = wordsToDigits(preclean(raw));
+    var kind = (INCOME_RE.test(text) || /(^|\s)\+\s*\d/.test(text)) ? "income" : "expense";
+    text = text.replace(/\+\s*(?=\d)/g, " ");
     var dayOffset = 0, working = text;
     for (var d = 0; d < DATE_HINTS.length; d++) {
       if (DATE_HINTS[d][0].test(working)) { dayOffset = DATE_HINTS[d][1]; working = working.replace(DATE_HINTS[d][0], " "); break; }
@@ -336,6 +355,7 @@
       amount: amt ? Math.round(amt.value * 100) / 100 : null,
       currency: amt ? amt.currency : null,
       dayOffset: dayOffset,
+      kind: kind,
       category: null // filled by parse() so learned mappings apply
     };
   }
@@ -359,7 +379,7 @@
     } else {
       entries = [parseOne(text)];
     }
-    entries.forEach(function (e) { e.category = categorize(e.item || e.raw, learned); });
+    entries.forEach(function (e) { e.category = e.kind === "income" ? "income" : categorize((e.item || "") + " " + e.raw, learned); });
     return { entries: entries, normalized: text };
   }
 
@@ -371,6 +391,7 @@
     normalizeKey: normalizeKey,
     CATEGORIES: CATEGORIES,
     CATEGORY_BY_ID: CATEGORY_BY_ID,
+    LEGACY_CATEGORY: LEGACY_CATEGORY,
     CURRENCY_WORDS: CURRENCY_WORDS
   };
 });
