@@ -1,7 +1,7 @@
 # Publishes the repository root to GitHub Pages so both apps are reachable:
 #   https://<owner>.github.io/Password-Rememberer/              (Password Rememberer)
 #   https://<owner>.github.io/Password-Rememberer/pocket-tally/ (Pocket Tally)
-# One-time setup: Settings -> Pages -> Source: "GitHub Actions".
+# The first run switches Pages on by itself (enablement: true below).
 name: Deploy to GitHub Pages
 
 on:
@@ -29,6 +29,10 @@ jobs:
       - name: Run parser tests
         run: node --test pocket-tally/parser.test.mjs
       - uses: actions/configure-pages@v5
+        with:
+          # Switch Pages on for the repository on the first run, so no
+          # Settings change is needed before merging.
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .

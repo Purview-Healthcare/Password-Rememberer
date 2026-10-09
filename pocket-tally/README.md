@@ -19,8 +19,8 @@ Amounts can be digits or words ("two hundred and fifty", "1.5k", "four dollars f
 
 The app has to be served over HTTPS for the microphone and for installing. The simplest free option is GitHub Pages:
 
-1. In this repository go to **Settings → Pages**, and under **Build and deployment** set **Source** to **GitHub Actions**.
-2. Merge this branch into the default branch (or run the **Deploy to GitHub Pages** workflow manually from the Actions tab).
+1. Merge this branch into the default branch. The **Deploy to GitHub Pages** workflow runs on the merge and switches Pages on for the repository by itself.
+2. If the run fails with a Pages error, turn Pages on once by hand (**Settings → Pages → Source: GitHub Actions**) and re-run the workflow from the Actions tab.
 3. The app is then at `https://<your-github-user-or-org>.github.io/Password-Rememberer/pocket-tally/`.
 
 Then on the phone:
