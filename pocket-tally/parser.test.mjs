@@ -189,3 +189,93 @@ test("wordsToDigits", () => {
   assert.equal(P.wordsToDigits("one coffee and one tea"), "1 coffee and 1 tea");
   assert.equal(P.wordsToDigits("a hundred bucks"), "100 bucks");
 });
+
+// ---- how people actually talk about money ----
+const corpus = [
+  // [said, kind, item, amount, category?]
+  ["I spent 50000 on shit", "expense", "Shit", 50000, "other"],
+  ["I just threw all my money into gambling, 50000", "expense", "Gambling", 50000, "shopping"],
+  ["blew 2000 on drinks last night", "expense", "Drinks", 2000, "food"],
+  ["wasted 300 on junk", "expense", "Junk", 300],
+  ["lost 500 gambling", "expense", "Gambling", 500, "shopping"],
+  ["I gave 500 to the watchman", "expense", "Watchman", 500],
+  ["gave mom 2000", "expense", "Mom", 2000, "family"],
+  ["paid the electrician 800", "expense", "Electrician", 800, "bills"],
+  ["electrician 800", "expense", "Electrician", 800, "bills"],
+  ["shelled out 1200 for the gig", "expense", "Gig", 1200, "shopping"],
+  ["splurged 5000 on shoes", "expense", "Shoes", 5000, "shopping"],
+  ["put 500 into petrol", "expense", "Petrol", 500, "transport"],
+  ["filled petrol 2000", "expense", "Petrol", 2000, "transport"],
+  ["got a haircut 300", "expense", "Haircut", 300, "health"],
+  ["ordered pizza 450", "expense", "Pizza", 450, "food"],
+  ["tipped the waiter 50", "expense", "Waiter", 50, "food"],
+  ["tipped 50", "expense", "Tip", 50],
+  ["donated 500 to the temple", "expense", "Temple", 500],
+  ["lent 500 to ravi", "expense", "Lent to ravi", 500],
+  ["returned 500 to ravi", "expense", "Ravi", 500],
+  ["recharged my phone 299", "expense", "Phone", 299, "bills"],
+  ["the bill came to 1200", "expense", "Bill", 1200, "bills"],
+  ["dinner was around 860", "expense", "Dinner", 860, "food"],
+  ["spent 50k on a bike", "expense", "Bike", 50000, "transport"],
+  ["paid rent 15000", "expense", "Rent", 15000, "bills"],
+  ["cleared the credit card bill 7500", "expense", "Credit card bill", 7500, "payments"],
+  ["settled 300 with ravi", "expense", "Ravi", 300],
+  ["moved 5000 to savings", "expense", "Savings", 5000, "savings"],
+  ["chai pe 20 kharch kiye", "expense", "Chai", 20, "food"],
+  ["one fifty for parking", "expense", "Parking", 150, "transport"],
+  ["ten k on the phone", "expense", "Phone", 10000],
+  ["two grand on a jacket", "expense", "Jacket", 2000, "shopping"],
+  ["1.2 lakhs for the bike", "expense", "Bike", 120000, "transport"],
+  ["salary credited 69000", "income", "Salary", 69000],
+  ["got my salary 69000", "income", "Salary", 69000],
+  ["payday 69000", "income", "Payday", 69000],
+  ["got paid 15000 for the website", "income", "Website", 15000],
+  ["client paid me 30000", "income", "Client", 30000],
+  ["dad sent me 5000", "income", "Dad", 5000],
+  ["mom gave me 2000", "income", "Mom", 2000],
+  ["received 5000 from dad", "income", "Dad", 5000],
+  ["got 500 back from ravi", "income", "Ravi", 500],
+  ["ravi returned 500", "income", "Ravi", 500],
+  ["amazon refunded 1200", "income", "Amazon", 1200],
+  ["refund of 1200 from amazon", "income", "Refund from amazon", 1200],
+  ["cashback 50", "income", "Cashback", 50],
+  ["won 2000 in a bet", "income", "Bet", 2000],
+  ["bonus 10000", "income", "Bonus", 10000],
+  ["sold my old phone for 8000", "income", "Old phone", 8000],
+  ["borrowed 5000 from a friend", "income", "Borrowed from friend", 5000],
+  ["took a loan 50000", "income", "Loan", 50000],
+  ["interest 300 credited", "income", "Interest", 300],
+  ["collected 2000 from the tenants", "income", "Tenants", 2000],
+  ["gift from mom 2000", "income", "Gift from mom", 2000],
+  ["paise mile 3000", "income", "Received", 3000],
+  ["freelance 15000 came in", "income", "Freelance", 15000],
+];
+for (const [said, kind, item, amount, category] of corpus) {
+  test(`corpus: "${said}"`, () => {
+    const r = P.parse(said);
+    assert.equal(r.entries.length, 1, JSON.stringify(r));
+    const e = r.entries[0];
+    assert.equal(e.kind, kind, "kind");
+    assert.equal(e.item, item, "item");
+    assert.equal(e.amount, amount, "amount");
+    if (category) assert.equal(e.category, category, "category");
+  });
+}
+
+test("undo and status commands", () => {
+  for (const s of ["undo", "undo that", "scratch that", "delete the last one", "cancel that", "never mind", "Oops"]) assert.equal(P.parse(s).command, "undo", s);
+  for (const s of ["how much have I spent today", "what's left", "how much is left?", "balance?"]) assert.equal(P.parse(s).command, "status", s);
+  assert.equal(P.parse("coffee 40").command, undefined);
+  assert.equal(P.parse("cancelled my gym 1200").command, undefined);
+});
+
+test("weekdays and days ago", () => {
+  const wed = new Date(2026, 9, 14); // a Wednesday
+  assert.equal(P.parse("lunch 200 on monday", undefined, undefined, wed).entries[0].dayOffset, -2);
+  assert.equal(P.parse("lunch 200 on wednesday", undefined, undefined, wed).entries[0].dayOffset, 0);
+  assert.equal(P.parse("lunch 200 last wednesday", undefined, undefined, wed).entries[0].dayOffset, -7);
+  assert.equal(P.parse("lunch 200 on saturday", undefined, undefined, wed).entries[0].dayOffset, -4);
+  assert.equal(P.parse("cab 85 three days ago").entries[0].dayOffset, -3);
+  assert.equal(P.parse("cab 85 last week").entries[0].dayOffset, -7);
+  assert.equal(P.parse("lunch 200 on monday", undefined, undefined, wed).entries[0].item, "Lunch");
+});
