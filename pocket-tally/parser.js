@@ -417,9 +417,49 @@
   // words used when the item was only a verb: "tipped 50" -> Tip
   var VERB_NOUN = { tipped: "Tip", tip: "Tip", donated: "Donation", donation: "Donation", gambled: "Gambling", gambling: "Gambling", lost: "Lost", withdrew: "Cash withdrawal", withdrawal: "Cash withdrawal", atm: "ATM withdrawal", recharged: "Recharge", recharge: "Recharge", topped: "Top-up", refuelled: "Fuel", refueled: "Fuel", fuel: "Fuel", borrowed: "Borrowed", lent: "Lent", invested: "Investment", deposited: "Deposit", salary: "Salary", payday: "Salary", wasted: "Wasted", blew: "Blown", splurged: "Splurge", commission: "Commission", cashback: "Cashback", refund: "Refund", bonus: "Bonus", interest: "Interest", dividend: "Dividend", won: "Winnings", found: "Found money" };
 
+  // ---------- forgiving spelling for the words that decide in vs out ----------
+  var FUZZ_TARGETS = [["received", 2], ["credited", 2], ["cashback", 2], ["borrowed", 2], ["returned", 2], ["refunded", 2], ["salary", 1], ["refund", 2], ["aside", 1], ["spent", 1], ["lakh", 1]];
+  var KNOWN = null;
+  function knownWords() {
+    if (KNOWN) return KNOWN;
+    KNOWN = {};
+    function add(w) { String(w).toLowerCase().split(/[^a-z']+/).forEach(function (x) { if (x) KNOWN[x] = 1; }); }
+    LEAD_FILLER.forEach(add); TRAIL_FILLER.forEach(add);
+    Object.keys(SPEND_VERBS).forEach(add); Object.keys(POST_PREP).forEach(add); Object.keys(CURRENCY_WORDS).forEach(add); Object.keys(SUBUNIT_WORDS).forEach(add);
+    Object.keys(SMALL).forEach(add); Object.keys(TENS).forEach(add); Object.keys(SCALES).forEach(add); Object.keys(TIME_WORDS).forEach(add); Object.keys(VERB_NOUN).forEach(add);
+    CATEGORIES.forEach(function (c) { c.keywords.forEach(add); });
+    WEEKDAYS.forEach(add); Object.keys(EVENT_STOP).forEach(add);
+    ["recent", "recently", "receipt", "receipts", "recipe", "recipes", "salad", "salads", "scent", "spelt", "spend", "sent", "scene", "return", "returns", "refine", "refuel", "reside", "beside", "inside", "outside", "sided", "asides", "aside", "spent", "spend", "spending", "spends", "crediting", "credits", "credit", "borrow", "borrowing", "refuse", "refused", "refuses", "refined", "refill", "refills", "round", "rebound", "resend", "refer", "referred", "lakhs", "lake", "lamp", "lack", "lash", "latch", "lady", "cash", "cashier", "cashew", "cashews"].forEach(add);
+    return KNOWN;
+  }
+  function editDistance(a, b) {
+    if (a === b) return 0;
+    var la = a.length, lb = b.length;
+    if (Math.abs(la - lb) > 2) return 3;
+    var prev = [], cur = [], i, j;
+    for (j = 0; j <= lb; j++) prev[j] = j;
+    for (i = 1; i <= la; i++) {
+      cur[0] = i;
+      for (j = 1; j <= lb; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      var tmp = prev; prev = cur; cur = tmp;
+    }
+    return prev[lb];
+  }
+  function fuzzWord(w) {
+    if (w.length < 5 || !/^[a-z]+$/.test(w) || knownWords()[w]) return w;
+    for (var i = 0; i < FUZZ_TARGETS.length; i++) {
+      var t = FUZZ_TARGETS[i][0], max = FUZZ_TARGETS[i][1];
+      if (Math.abs(t.length - w.length) <= max && editDistance(w, t) <= max) return t;
+    }
+    return w;
+  }
+  function fuzzText(text) { return text.split(/(\s+)/).map(function (tok) { return /\s/.test(tok) ? tok : fuzzWord(tok); }).join(""); }
+
   function preclean(raw) {
-    return String(raw || "")
+    return fuzzText(String(raw || "")
       .toLowerCase()
+      .replace(/\bset\s*a\s*side\b/g, "set aside")
+      .replace(/\brecie?ve?d?\b/g, function (m) { return m.length >= 6 ? "received" : m; })
       .replace(/\brs\.\s*/g, "rs ")
       .replace(/\/-/g, " ")
       .replace(/([$₹€£¥])\s+(?=\d)/g, "$1")
@@ -436,7 +476,7 @@
       .replace(/\bapiece\b/g, "each")
       .replace(/[“”"]/g, "")
       .replace(/\s+/g, " ")
-      .trim();
+      .trim());
   }
 
   function parseOne(raw, events, now) {
@@ -530,6 +570,7 @@
     parseOne: parseOne,
     command: command,
     dateHint: dateHint,
+    fuzzWord: fuzzWord,
     matchEvent: matchEvent,
     wordsToDigits: wordsToDigits,
     categorize: categorize,
