@@ -8,7 +8,7 @@ It is an installable web app that goes on the home screen of **both Android and 
 
 1. **Received.** At the start of the month (or whenever money comes in) say **"received 69000"** or **"salary 69000"**. It goes in the Received column.
 2. **Set aside.** Say **"set aside 10000"** for savings, bills you pay later, anything you don't want counted as spendable. Your month's budget is what you received minus this.
-3. **Spent.** Say **"coffee 40"**, **"cab 85"**, **"kids 330 on shoes and 40 on lunch"**. Each becomes an entry with a name, amount and group. The home screen shows what's left this month.
+3. **Spent.** Say **"coffee 40"**, **"cab 85"**, **"kids 330 on shoes and 40 on lunch"**, **"3 coffees 40 each"**. Each becomes an entry with a name, amount, quantity and group. The home screen shows what's left this month. Prefer boxes? Tap **Or fill in the boxes** under the text field: what, quantity, price each, total.
 4. **Note it down.** Tap any entry to change the name, amount, date, group or event, and to add a note. Changing a group teaches it: the same item goes there next time.
 5. **Events.** A trip, a wedding, a client project. Tap **+ Event**, give it a name and, if you like, a budget. Two kinds:
    - **Part of my month**: its spending counts in your month and the event keeps its own subtotal (a Goa trip with a ₹20,000 budget).
