@@ -23,8 +23,8 @@ const cases = [
   ["rs. 500 for medicines", "Medicines", 500, "health", "INR"],
   ["₹1,200 rent", "Rent", 1200, "bills", "INR"],
   ["$20 at the pharmacy", "Pharmacy", 20, "health", "USD"],
-  ["bought 2 tickets for 30", "2 tickets", 30, "shopping"],
-  ["2 coffees for 8 dollars", "2 coffees", 8, "food", "USD"],
+  ["bought 2 tickets for 30", "Tickets", 30, "shopping"],
+  ["2 coffees for 8 dollars", "Coffees", 8, "food", "USD"],
   ["netflix subscription 15.99", "Netflix subscription", 15.99, "bills"],
   ["1.5k on new shoes", "New shoes", 1500, "shopping"],
   ["electricity bill one thousand two hundred", "Electricity bill", 1200, "bills"],
@@ -96,6 +96,27 @@ test("event names are matched and removed", () => {
   assert.equal(e.eventId, null);
   const r = P.parse("lunch 200 and taxi 150 on the goa trip", undefined, events);
   assert.deepEqual(r.entries.map(x => [x.item, x.amount, x.eventId]), [["Lunch", 200, "ev1"], ["Taxi", 150, "ev1"]]);
+});
+
+test("quantity and price each", () => {
+  let e = one("3 coffees 40 each");
+  assert.deepEqual([e.item, e.qty, e.unit, e.amount], ["Coffees", 3, 40, 120]);
+  e = one("2 x samosa 15");
+  assert.deepEqual([e.item, e.qty, e.unit, e.amount], ["Samosa", 2, 7.5, 15]);
+  e = one("coffee x3 120");
+  assert.deepEqual([e.item, e.qty, e.unit, e.amount], ["Coffee", 3, 40, 120]);
+  e = one("two samosas 15 each");
+  assert.deepEqual([e.item, e.qty, e.amount], ["Samosas", 2, 30]);
+  e = one("bought 2 tickets for 30");
+  assert.deepEqual([e.item, e.qty, e.unit, e.amount], ["Tickets", 2, 15, 30]);
+  e = one("4 bottles of water 20 per bottle");
+  assert.deepEqual([e.item, e.qty, e.amount], ["Bottles of water", 4, 80]);
+  e = one("coffee 40");
+  assert.deepEqual([e.qty, e.unit, e.amount], [1, 40, 40]);
+  e = one("3 coffees 40 each for the goa trip", undefined, [{ id: "ev1", name: "Goa trip" }]);
+  assert.deepEqual([e.item, e.qty, e.amount, e.eventId], ["Coffees", 3, 120, "ev1"]);
+  const r = P.parse("3 coffees 40 each and 2 samosas 15 each");
+  assert.deepEqual(r.entries.map(x => [x.item, x.qty, x.amount]), [["Coffees", 3, 120], ["Samosas", 2, 30]]);
 });
 
 test("splits two purchases said in one breath", () => {

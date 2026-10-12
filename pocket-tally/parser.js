@@ -294,14 +294,28 @@
     [/\bthis morning\b/, 0], [/\btonight\b/, 0], [/\btoday\b/, 0], [/\bjust now\b/, 0]
   ];
 
-  function cleanItem(text) {
-    var s = text.replace(/[$₹€£¥]/g, " ").replace(/[^\w\s'&.-]/g, " ").replace(/\s+/g, " ").trim();
+  // "3 coffees", "3 x coffee", "coffee x3" -> quantity 3 and the item without the count
+  function extractQty(words) {
+    var qty = 1, m;
+    if (words.length > 1 && /^\d{1,3}$/.test(words[0]) && /^[x×]$/i.test(words[1]) && words.length > 2) { qty = parseInt(words[0], 10); words = words.slice(2); }
+    else if (words.length > 1 && (m = words[0].match(/^(\d{1,3})[x×]$/i))) { qty = parseInt(m[1], 10); words = words.slice(1); }
+    else if (words.length > 1 && /^\d{1,3}$/.test(words[0]) && /^[a-z]/i.test(words[1]) && !CURRENCY_WORDS[words[1].toLowerCase()]) { qty = parseInt(words[0], 10); words = words.slice(1); }
+    else if (words.length > 1 && (m = words[words.length - 1].match(/^[x×](\d{1,3})$/i))) { qty = parseInt(m[1], 10); words = words.slice(0, -1); }
+    else if (words.length > 2 && /^[x×]$/i.test(words[words.length - 2]) && /^\d{1,3}$/.test(words[words.length - 1])) { qty = parseInt(words[words.length - 1], 10); words = words.slice(0, -2); }
+    return { qty: qty >= 1 ? qty : 1, words: words };
+  }
+
+  function cleanItem(text, wantQty) {
+    var s = text.replace(/[$₹€£¥]/g, " ").replace(/[^\w\s'&.×-]/g, " ").replace(/\s+/g, " ").trim();
     var words = s.split(" ").filter(Boolean);
     while (words.length && LEAD_SET[words[0].toLowerCase().replace(/[.,]+$/, "")]) words.shift();
     while (words.length && TRAIL_SET[words[words.length - 1].toLowerCase().replace(/[.,]+$/, "")]) words.pop();
+    var qty = 1;
+    if (wantQty) { var q = extractQty(words); qty = q.qty; words = q.words; }
+    while (words.length && LEAD_SET[words[0].toLowerCase().replace(/[.,]+$/, "")]) words.shift();
     var item = words.join(" ").replace(/^[.\-&\s]+|[.\-&\s]+$/g, "");
-    if (!item) return "";
-    return item.charAt(0).toUpperCase() + item.slice(1);
+    item = item ? item.charAt(0).toUpperCase() + item.slice(1) : "";
+    return wantQty ? { item: item, qty: qty } : item;
   }
 
   function normalizeKey(s) {
@@ -381,6 +395,8 @@
       .replace(/\/-/g, " ")
       .replace(/([$₹€£¥])\s+(?=\d)/g, "$1")
       .replace(/(\d)\s*(?:dollars?|bucks)\s+(\d{1,2})\s*cents?\b/g, "$1 dollars and $2 cents")
+      .replace(/\bper\s+(?:piece|pc|item|unit|head|person|pax|plate|cup|bottle|packet|pack|kg|kilo|litre|liter|dozen)\b/g, "each")
+      .replace(/\bapiece\b/g, "each")
       .replace(/[“”"]/g, "")
       .replace(/\s+/g, " ")
       .trim();
@@ -399,20 +415,28 @@
       if (DATE_HINTS[d][0].test(working)) { dayOffset = DATE_HINTS[d][1]; working = working.replace(DATE_HINTS[d][0], " "); break; }
     }
     var amt = mergeSubunits(working, findAmount(working));
-    var itemText = working;
+    var itemText = working, perUnit = false;
     if (amt) {
       var s = amt.start, e = amt.end;
       if (SPEND_VERBS[amt.beforeWord]) s = amt.beforeStart;
-      if (POST_PREP[amt.afterWord]) e = amt.afterEnd;
+      if (amt.afterWord === "each") { perUnit = true; e = amt.afterEnd; var after2 = working.slice(e).match(/^\s*(on|for|at|to|in)\b/); if (after2) e += after2[0].length; }
+      else if (POST_PREP[amt.afterWord]) e = amt.afterEnd;
       itemText = working.slice(0, s) + " " + working.slice(e);
     }
-    var item = cleanItem(itemText);
+    var cleaned = cleanItem(itemText, kind === "expense");
+    var item = kind === "expense" ? cleaned.item : cleaned;
+    var qty = kind === "expense" ? cleaned.qty : 1;
     if (kind === "aside") item = item ? "Set aside · " + item : "Set aside";
     if (kind === "income" && !item && amt) item = "Received";
+    var unit = amt ? Math.round(amt.value * 100) / 100 : null;
+    var total = unit === null ? null : (perUnit ? Math.round(unit * qty * 100) / 100 : unit);
+    if (!perUnit && unit !== null && qty > 1) unit = Math.round(total / qty * 100) / 100;
     return {
       raw: String(raw || "").trim(),
       item: item,
-      amount: amt ? Math.round(amt.value * 100) / 100 : null,
+      amount: total,
+      qty: qty,
+      unit: unit,
       currency: amt ? amt.currency : null,
       dayOffset: dayOffset,
       kind: kind,

@@ -134,6 +134,10 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
 .btn.small { height: 36px; padding: 0 12px; font-size: 14px; }
 .hint { width: 100%; font-size: 14px; color: var(--ink-2); background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
 .examples { width: 100%; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.linkbtn { border: 0; background: transparent; color: var(--accent); font-weight: 600; font-size: 14px; padding: 2px 4px; }
+.quick { width: 100%; display: grid; gap: 10px; background: var(--bg); border-radius: 14px; padding: 12px; }
+.three { display: grid; grid-template-columns: 0.8fr 1.1fr 1.1fr; gap: 8px; }
+.quick .hero-sub { min-height: 1.2em; }
 .examples button { border: 0; background: var(--surface-2); color: var(--ink-2); border-radius: 999px; padding: 6px 11px; font-size: 13px; }
 
 /* pending card */
@@ -308,11 +312,22 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
           <button type="submit" class="btn primary">Save</button>
         </form>
         <div id="keyboardHint" class="hint" hidden></div>
+        <button type="button" class="linkbtn" id="formToggle">Or fill in the boxes</button>
+        <form id="quickForm" class="quick" hidden autocomplete="off">
+          <div class="field"><label for="qItem">What</label><input id="qItem" type="text" placeholder="coffee"></div>
+          <div class="three">
+            <div class="field"><label for="qQty">Qty</label><input id="qQty" class="num" type="number" inputmode="numeric" min="1" step="1" value="1"></div>
+            <div class="field"><label for="qEach">Each</label><input id="qEach" class="num" type="number" inputmode="decimal" min="0" step="0.01" placeholder="40"></div>
+            <div class="field"><label for="qTotal">Total</label><input id="qTotal" class="num" type="number" inputmode="decimal" min="0" step="0.01" placeholder="40"></div>
+          </div>
+          <div class="actions"><span class="hero-sub" id="qHint" style="flex:1"></span><button type="submit" class="btn small primary">Save</button></div>
+        </form>
         <div class="examples" id="examples" aria-label="Examples you can say">
           <button type="button">coffee 40</button>
           <button type="button">received 69000</button>
           <button type="button">set aside 10000</button>
           <button type="button">kids 330 on shoes and 40 on lunch</button>
+          <button type="button">3 coffees 40 each</button>
         </div>
       </div>
 
@@ -427,8 +442,12 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
       </div>
       <div class="field"><label for="editItem">What</label><input id="editItem" type="text" required></div>
       <div class="two">
-        <div class="field"><label for="editAmount">Amount</label><input id="editAmount" class="num" type="number" inputmode="decimal" step="0.01" min="0" required></div>
+        <div class="field"><label for="editAmount">Total</label><input id="editAmount" class="num" type="number" inputmode="decimal" step="0.01" min="0" required></div>
         <div class="field"><label for="editDate">Date</label><input id="editDate" type="date" required></div>
+      </div>
+      <div class="two" id="editQtyRow">
+        <div class="field"><label for="editQty">Qty</label><input id="editQty" class="num" type="number" inputmode="numeric" step="1" min="1" value="1"></div>
+        <div class="field"><label for="editEach">Each</label><input id="editEach" class="num" type="number" inputmode="decimal" step="0.01" min="0"></div>
       </div>
       <div class="field" id="editCatField"><label>Category</label><div class="chips" id="editChips"></div></div>
       <div class="field" id="editEventField"><label for="editEvent">Event</label><select id="editEvent"></select></div>
@@ -672,6 +691,8 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
       if (x.kind !== "income" && x.kind !== "aside") x.kind = "expense";
       x.category = x.kind === "income" ? "income" : x.kind === "aside" ? "aside" : (P.LEGACY_CATEGORY[x.category] || (P.CATEGORY_BY_ID[x.category] && x.category !== "income" && x.category !== "aside" ? x.category : "other"));
       if (!x.eventId) x.eventId = null;
+      x.qty = Number(x.qty) >= 1 ? Math.round(Number(x.qty)) : 1;
+      x.unit = Number(x.unit) > 0 ? Number(x.unit) : Math.round(x.amount / x.qty * 100) / 100;
       return x;
     });
     entries.sort(function (a, b) { return (b.date > a.date ? 1 : b.date < a.date ? -1 : 0) || (b.ts || 0) - (a.ts || 0); });
@@ -745,12 +766,14 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     var inc = e.kind === "income", aside = e.kind === "aside";
     var ev = e.eventId ? eventsById[e.eventId] : null;
     var meta = inc ? (ev ? "Added to event" : "Received") : aside ? "Set aside" : catLabel(e.category);
+    var many = !inc && !aside && e.qty > 1;
+    if (many) meta += " · " + esc(money(e.unit)) + " each";
     if (ev && !(opts && opts.hideEvent)) meta += ' · <span class="tag">' + esc(ev.name) + "</span>";
     if (e.note) meta += " · " + esc(e.note);
     if (e.ts && e.date === todayStr()) meta += " · " + esc(timeLabel(e.ts));
     return '<li class="entry" data-id="' + esc(e.id) + '" role="button" tabindex="0">' +
       '<span class="dot" data-cat="' + esc(inc ? "income" : aside ? "aside" : e.category) + '"></span>' +
-      '<div class="entry-main"><div class="entry-item">' + esc(e.item || "Untitled") + '</div>' +
+      '<div class="entry-main"><div class="entry-item">' + esc(e.item || "Untitled") + (many ? ' <span class="num" style="color:var(--ink-3);font-weight:500">×' + e.qty + "</span>" : "") + '</div>' +
       '<div class="entry-meta">' + meta + "</div></div>" +
       '<div class="entry-amt' + (inc ? " income" : aside ? " aside" : "") + '">' + (inc ? "+" : "") + esc(money(e.amount)) + "</div></li>";
   }
@@ -874,6 +897,38 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     handleUtterance(b.textContent);
   });
 
+  // the boxes: what, how many, price each, total
+  var qForm = $("#quickForm"), qItem = $("#qItem"), qQty = $("#qQty"), qEach = $("#qEach"), qTotal = $("#qTotal"), qHint = $("#qHint");
+  function round2(n) { return Math.round(n * 100) / 100; }
+  function qtyVal(el) { var q = parseInt(el.value, 10); return q >= 1 ? q : 1; }
+  function linkQtyFields(qtyEl, eachEl, totalEl, hintEl, source) {
+    var q = qtyVal(qtyEl), e = parseFloat(eachEl.value), t = parseFloat(totalEl.value);
+    if (source === "each") { totalEl.value = e >= 0 ? round2(e * q) : ""; }
+    else if (source === "total") { eachEl.value = t >= 0 ? round2(t / q) : ""; }
+    else { if (e >= 0) totalEl.value = round2(e * q); else if (t >= 0) eachEl.value = round2(t / q); }
+    if (hintEl) { var tt = parseFloat(totalEl.value); hintEl.textContent = q > 1 && tt >= 0 ? q + " × " + money(parseFloat(eachEl.value) || 0) + " = " + money(tt) : ""; }
+  }
+  $("#formToggle").addEventListener("click", function () {
+    qForm.hidden = !qForm.hidden;
+    this.textContent = qForm.hidden ? "Or fill in the boxes" : "Hide the boxes";
+    try { localStorage.setItem("pockettally.quickform", qForm.hidden ? "0" : "1"); } catch (e) {}
+    if (!qForm.hidden) qItem.focus();
+  });
+  try { if (localStorage.getItem("pockettally.quickform") === "1") { qForm.hidden = false; $("#formToggle").textContent = "Hide the boxes"; } } catch (e) {}
+  qEach.addEventListener("input", function () { linkQtyFields(qQty, qEach, qTotal, qHint, "each"); });
+  qTotal.addEventListener("input", function () { linkQtyFields(qQty, qEach, qTotal, qHint, "total"); });
+  qQty.addEventListener("input", function () { linkQtyFields(qQty, qEach, qTotal, qHint, "qty"); });
+  qForm.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var item = qItem.value.trim(), total = parseFloat(qTotal.value), q = qtyVal(qQty);
+    if (!item) { qItem.focus(); return; }
+    if (!(total >= 0)) { qTotal.focus(); return; }
+    item = item.charAt(0).toUpperCase() + item.slice(1);
+    saveParsed({ item: item, amount: round2(total), qty: q, unit: round2(total / q), category: P.categorize(item, settings.learned), kind: "expense", eventId: ctx, raw: "" });
+    qItem.value = ""; qQty.value = "1"; qEach.value = ""; qTotal.value = ""; qHint.textContent = "";
+    qItem.focus();
+  });
+
   function handleUtterance(text) {
     var result = P.parse(text, settings.learned, activeEvents().map(function (ev) { return { id: ev.id, name: ev.name }; }));
     result.entries.forEach(function (e) { if (!e.eventId && ctx && e.kind !== "aside") e.eventId = ctx; });
@@ -889,11 +944,12 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
   function saveParsed(e) {
     if (settings.currencyAuto && e.currency && e.currency !== settings.currency) { settings.currency = e.currency; fmtCache = {}; saveSettings(); syncSettingsUI(); }
     var kind = e.kind === "income" ? "income" : e.kind === "aside" ? "aside" : "expense";
-    var entry = { id: uid(), kind: kind, item: e.item, amount: e.amount, currency: e.currency || settings.currency, category: kind === "income" ? "income" : kind === "aside" ? "aside" : (e.category || "other"), date: todayStr(e.dayOffset || 0), ts: Date.now(), mod: Date.now(), note: "", eventId: kind === "aside" ? null : (e.eventId || null), raw: e.raw || "" };
+    var qty = kind === "expense" && Number(e.qty) >= 1 ? Math.round(Number(e.qty)) : 1;
+    var entry = { id: uid(), kind: kind, item: e.item, amount: e.amount, qty: qty, unit: Number(e.unit) > 0 ? Number(e.unit) : Math.round(e.amount / qty * 100) / 100, currency: e.currency || settings.currency, category: kind === "income" ? "income" : kind === "aside" ? "aside" : (e.category || "other"), date: todayStr(e.dayOffset || 0), ts: Date.now(), mod: Date.now(), note: "", eventId: kind === "aside" ? null : (e.eventId || null), raw: e.raw || "" };
     return storeReady.then(function () { return store.add("entries", entry); }).then(function () {
       var ev = entry.eventId ? eventsById[entry.eventId] : null;
       var head = kind === "income" ? "Received · " : kind === "aside" ? "Set aside · " : "Saved · ";
-      toast(head + entry.item + " · " + (kind === "income" ? "+" : "") + money(entry.amount) + (ev ? " · " + ev.name : ""), { label: "Undo", action: function () { markDeleted(entry.id); store.remove("entries", entry.id); } });
+      toast(head + entry.item + (entry.qty > 1 ? " ×" + entry.qty : "") + " · " + (kind === "income" ? "+" : "") + money(entry.amount) + (ev ? " · " + ev.name : ""), { label: "Undo", action: function () { markDeleted(entry.id); store.remove("entries", entry.id); } });
       showTranscript("", false);
     });
   }
@@ -1184,7 +1240,7 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
   function trimNum(v) { return String(Math.round(v * 10) / 10); }
   function renderTopItems(list) {
     var map = {};
-    list.forEach(function (e) { var k = P.normalizeKey(e.item) || "untitled"; if (!map[k]) map[k] = { label: e.item || "Untitled", count: 0, total: 0 }; map[k].count++; map[k].total += e.amount; });
+    list.forEach(function (e) { var k = P.normalizeKey(e.item) || "untitled"; if (!map[k]) map[k] = { label: e.item || "Untitled", count: 0, total: 0 }; map[k].count += e.qty || 1; map[k].total += e.amount; });
     var rows = Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) { return b.count - a.count || b.total - a.total; }).slice(0, 6);
     $("#topItems").innerHTML = rows.length ? rows.map(function (r) { return "<li><span>" + esc(r.label) + "<small>×" + r.count + "</small></span><span class=\"num\">" + esc(money(r.total)) + "</span></li>"; }).join("") : '<li class="empty" style="display:block">Repeat entries will show up here.</li>';
   }
@@ -1211,6 +1267,7 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     editKind = k === "income" ? "income" : k === "aside" ? "aside" : "expense";
     $$("#editKind button").forEach(function (b) { b.classList.toggle("active", b.dataset.kind === editKind); });
     $("#editCatField").hidden = editKind !== "expense";
+    $("#editQtyRow").hidden = editKind !== "expense";
     $("#editEventField").hidden = editKind === "aside";
   }
   $("#editKind").addEventListener("click", function (ev) { var b = ev.target.closest("button[data-kind]"); if (b) setEditKind(b.dataset.kind); });
@@ -1220,6 +1277,8 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     setEditKind(e.kind);
     $("#editItem").value = e.item || "";
     $("#editAmount").value = e.amount;
+    $("#editQty").value = e.qty || 1;
+    $("#editEach").value = e.unit != null ? e.unit : e.amount;
     $("#editDate").value = e.date;
     $("#editNote").value = e.note || "";
     var sel = $("#editEvent");
@@ -1233,6 +1292,9 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     $("#editChips").innerHTML = P.CATEGORIES.filter(function (c) { return c.id !== "income" && c.id !== "aside"; }).map(function (c) { return '<button type="button" class="chip' + (c.id === editCat ? " active" : "") + '" data-cat="' + c.id + '"><span class="dot" data-cat="' + c.id + '"></span>' + esc(c.label) + "</button>"; }).join("");
   }
   $("#editChips").addEventListener("click", function (ev) { var b = ev.target.closest(".chip"); if (!b) return; editCat = b.dataset.cat; renderEditChips(); });
+  $("#editEach").addEventListener("input", function () { linkQtyFields($("#editQty"), $("#editEach"), $("#editAmount"), null, "each"); });
+  $("#editAmount").addEventListener("input", function () { linkQtyFields($("#editQty"), $("#editEach"), $("#editAmount"), null, "total"); });
+  $("#editQty").addEventListener("input", function () { linkQtyFields($("#editQty"), $("#editEach"), $("#editAmount"), null, "qty"); });
   function closeEdit() { $("#editSheet").hidden = true; editingId = null; }
   $("#editCancel").addEventListener("click", closeEdit);
   $("#editSheet").addEventListener("click", function (ev) { if (ev.target === ev.currentTarget) closeEdit(); });
@@ -1246,7 +1308,8 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
       if (P.categorize(item) !== editCat) settings.learned[key] = editCat; else delete settings.learned[key];
       saveSettings();
     }
-    store.update("entries", id, { item: item, amount: Math.round(amount * 100) / 100, date: date, note: note, kind: editKind, category: editKind === "income" ? "income" : editKind === "aside" ? "aside" : editCat, eventId: editKind === "aside" ? null : ($("#editEvent").value || null), mod: Date.now() });
+    var q = editKind === "expense" ? qtyVal($("#editQty")) : 1;
+    store.update("entries", id, { item: item, amount: Math.round(amount * 100) / 100, qty: q, unit: Math.round(amount / q * 100) / 100, date: date, note: note, kind: editKind, category: editKind === "income" ? "income" : editKind === "aside" ? "aside" : editCat, eventId: editKind === "aside" ? null : ($("#editEvent").value || null), mod: Date.now() });
     closeEdit();
     toast("Updated");
   });
@@ -1281,7 +1344,7 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
   }
 
   function toCsv() {
-    var rows = [["date", "type", "item", "amount", "currency", "category", "event", "note"]].concat(entries.slice().reverse().map(function (e) { var ev = e.eventId ? eventsById[e.eventId] : null; return [e.date, e.kind === "income" ? "received" : e.kind === "aside" ? "set aside" : "spent", e.item, e.amount, e.currency || settings.currency, catLabel(e.category), ev ? ev.name : "", e.note || ""]; }));
+    var rows = [["date", "type", "item", "qty", "each", "amount", "currency", "category", "event", "note"]].concat(entries.slice().reverse().map(function (e) { var ev = e.eventId ? eventsById[e.eventId] : null; return [e.date, e.kind === "income" ? "received" : e.kind === "aside" ? "set aside" : "spent", e.item, e.qty || 1, e.unit != null ? e.unit : e.amount, e.amount, e.currency || settings.currency, catLabel(e.category), ev ? ev.name : "", e.note || ""]; }));
     return rows.map(function (r) { return r.map(function (v) { v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(","); }).join("\n");
   }
   function toBackup() { return JSON.stringify({ app: "pocket-tally", version: 2, exported: new Date().toISOString(), currency: settings.currency, learned: settings.learned, tombstones: settings.tombstones, events: events, entries: entries }, null, 2); }
@@ -1316,7 +1379,8 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
           var kind = e.kind === "income" ? "income" : e.kind === "aside" ? "aside" : "expense";
           var cat = kind === "income" ? "income" : kind === "aside" ? "aside" : (P.LEGACY_CATEGORY[e.category] || (P.CATEGORY_BY_ID[e.category] && e.category !== "income" && e.category !== "aside" ? e.category : "other"));
           var ts = Number(e.ts) || parseDate(e.date).getTime();
-          return { id: String(e.id || uid()), kind: kind, item: e.item, amount: Number(e.amount), currency: e.currency || settings.currency, category: cat, date: e.date, ts: ts, mod: Number(e.mod) || ts, note: e.note || "", eventId: e.eventId && knownEvents[e.eventId] ? e.eventId : null, raw: e.raw || "" };
+          var q = Number(e.qty) >= 1 ? Math.round(Number(e.qty)) : 1;
+          return { id: String(e.id || uid()), kind: kind, item: e.item, amount: Number(e.amount), qty: q, unit: Number(e.unit) > 0 ? Number(e.unit) : Math.round(Number(e.amount) / q * 100) / 100, currency: e.currency || settings.currency, category: cat, date: e.date, ts: ts, mod: Number(e.mod) || ts, note: e.note || "", eventId: e.eventId && knownEvents[e.eventId] ? e.eventId : null, raw: e.raw || "" };
         });
       var mergedEvents = events.slice();
       validEvents.forEach(function (ev) { if (!mergedEvents.some(function (x) { return x.id === ev.id; })) mergedEvents.push(ev); });
