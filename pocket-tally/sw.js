@@ -1,10 +1,11 @@
 /* Pocket Tally service worker: keeps the app working with no connection. */
-const CACHE = "pocket-tally-shell-v1";
+const CACHE = "pocket-tally-shell-v2";
 const FONT_CACHE = "pocket-tally-fonts-v1";
 const SHELL = [
   "./",
   "./index.html",
   "./parser.js",
+  "./sync.js",
   "./manifest.webmanifest",
   "./icons/icon.svg",
   "./icons/icon-192.png",

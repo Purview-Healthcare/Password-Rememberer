@@ -15,6 +15,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <!-- ARTIFACT-START -->
 <title>Pocket Tally</title>
+<script>window.POCKET_TALLY_GOOGLE_CLIENT_ID = "";</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
@@ -322,6 +323,7 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
           <li>Say what you keep aside: <b>"set aside 10000"</b>. What's left is your month.</li>
           <li>Say what you spend: <b>"coffee 40"</b>, <b>"cab 85"</b>. Add a note any time by tapping an entry.</li>
           <li>Going on a trip, or spending someone else's money? Make an <b>Event</b> and it keeps its own tally.</li>
+          <li>More than one phone? <b>Settings → Connect Google Drive</b> keeps a copy in your own Drive, in a folder only this app can see.</li>
         </ol>
         <p class="hero-sub" style="margin:0">Everything stays on this phone. Nothing is sent anywhere.</p>
       </div>
@@ -500,6 +502,15 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
           <div class="actions" style="margin-top:8px"><button type="button" class="btn small" id="restorePaste">Restore pasted backup</button></div>
         </details>
       </div>
+      <div class="settings-row" id="gdriveRow">
+        <h3>Google Drive</h3>
+        <p id="gdriveText"></p>
+        <div class="actions">
+          <button type="button" class="btn small primary" id="gdriveConnect">Connect Google Drive</button>
+          <button type="button" class="btn small" id="gdriveSync" hidden>Sync now</button>
+          <button type="button" class="btn small" id="gdriveDisconnect" hidden>Disconnect</button>
+        </div>
+      </div>
       <div class="settings-row">
         <h3>What this app does with your data</h3>
         <p>Only what you tell it. No bank access, no account, no server. Entries live on this device; a backup is a file you keep wherever you like.</p>
@@ -514,6 +525,7 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
 </div>
 
 <script src="parser.js"></script>
+<script src="sync.js"></script>
 <script>
 (function () {
   "use strict";
@@ -536,9 +548,12 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     var region = (lang.split("-")[1] || "").toUpperCase();
     return REGION_CURRENCY[region] || "USD";
   }
-  function defaultSettings() { return { currency: guessCurrency(), currencyAuto: true, lang: "", learned: {}, installDismissed: false }; }
+  function defaultSettings() { return { currency: guessCurrency(), currencyAuto: true, lang: "", learned: {}, installDismissed: false, tombstones: {}, gdrive: { connected: false, token: null, expiresAt: 0, fileId: null, lastSync: 0 } }; }
   var settings = defaultSettings();
-  try { var saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"); Object.assign(settings, saved); if (!settings.learned) settings.learned = {}; } catch (e) {}
+  try { var saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"); Object.assign(settings, saved); } catch (e) {}
+  if (!settings.learned) settings.learned = {};
+  if (!settings.tombstones) settings.tombstones = {};
+  if (!settings.gdrive) settings.gdrive = defaultSettings().gdrive;
   function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {} }
 
   // ---------- money & dates ----------
@@ -662,6 +677,7 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     entries.sort(function (a, b) { return (b.date > a.date ? 1 : b.date < a.date ? -1 : 0) || (b.ts || 0) - (a.ts || 0); });
     adoptCurrency();
     renderAll();
+    scheduleSync();
   }
   function onEvents(list) {
     events = list.map(function (ev) {
@@ -672,6 +688,7 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     events.forEach(function (ev) { eventsById[ev.id] = ev; });
     if (ctx && !eventsById[ctx]) setCtx(null);
     renderAll();
+    scheduleSync();
   }
   // Show amounts in the currency the entries were recorded in, until the user picks one explicitly.
   function adoptCurrency() {
@@ -872,11 +889,11 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
   function saveParsed(e) {
     if (settings.currencyAuto && e.currency && e.currency !== settings.currency) { settings.currency = e.currency; fmtCache = {}; saveSettings(); syncSettingsUI(); }
     var kind = e.kind === "income" ? "income" : e.kind === "aside" ? "aside" : "expense";
-    var entry = { id: uid(), kind: kind, item: e.item, amount: e.amount, currency: e.currency || settings.currency, category: kind === "income" ? "income" : kind === "aside" ? "aside" : (e.category || "other"), date: todayStr(e.dayOffset || 0), ts: Date.now(), note: "", eventId: kind === "aside" ? null : (e.eventId || null), raw: e.raw || "" };
+    var entry = { id: uid(), kind: kind, item: e.item, amount: e.amount, currency: e.currency || settings.currency, category: kind === "income" ? "income" : kind === "aside" ? "aside" : (e.category || "other"), date: todayStr(e.dayOffset || 0), ts: Date.now(), mod: Date.now(), note: "", eventId: kind === "aside" ? null : (e.eventId || null), raw: e.raw || "" };
     return storeReady.then(function () { return store.add("entries", entry); }).then(function () {
       var ev = entry.eventId ? eventsById[entry.eventId] : null;
       var head = kind === "income" ? "Received · " : kind === "aside" ? "Set aside · " : "Saved · ";
-      toast(head + entry.item + " · " + (kind === "income" ? "+" : "") + money(entry.amount) + (ev ? " · " + ev.name : ""), { label: "Undo", action: function () { store.remove("entries", entry.id); } });
+      toast(head + entry.item + " · " + (kind === "income" ? "+" : "") + money(entry.amount) + (ev ? " · " + ev.name : ""), { label: "Undo", action: function () { markDeleted(entry.id); store.remove("entries", entry.id); } });
       showTranscript("", false);
     });
   }
@@ -964,13 +981,13 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     $("#evBack").addEventListener("click", function () { eventsMode = "list"; renderEvents(); });
     var addTo = $("#evAddTo"); if (addTo) addTo.addEventListener("click", function () { setCtx(ev.id); showView("add"); status("New entries go to " + ev.name); typeInput.focus(); });
     $("#evEdit").addEventListener("click", function () { openEventForm(ev.id); });
-    $("#evToggle").addEventListener("click", function () { var closing = !ev.closed; store.update("events", ev.id, { closed: closing }); if (closing && ctx === ev.id) setCtx(null); toast(closing ? "Closed " + ev.name : "Reopened " + ev.name); });
+    $("#evToggle").addEventListener("click", function () { var closing = !ev.closed; store.update("events", ev.id, { closed: closing, mod: Date.now() }); if (closing && ctx === ev.id) setCtx(null); toast(closing ? "Closed " + ev.name : "Reopened " + ev.name); });
     var delBtn = $("#evDelete"), armed = false;
     delBtn.addEventListener("click", function () {
       if (!armed) { armed = true; delBtn.textContent = "Tap again to delete"; setTimeout(function () { armed = false; delBtn.textContent = "Delete"; }, 4000); return; }
       var chain = Promise.resolve();
-      list.forEach(function (e) { chain = chain.then(function () { return store.update("entries", e.id, { eventId: null }); }); });
-      chain.then(function () { return store.remove("events", ev.id); }).then(function () {
+      list.forEach(function (e) { chain = chain.then(function () { return store.update("entries", e.id, { eventId: null, mod: Date.now() }); }); });
+      chain.then(function () { markDeleted(ev.id); return store.remove("events", ev.id); }).then(function () {
         if (ctx === ev.id) setCtx(null);
         eventsMode = "list"; renderEvents();
         toast("Deleted " + ev.name + (list.length ? " · its entries moved to Everyday" : ""));
@@ -999,13 +1016,13 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     var b = $("#evBudget").value.trim();
     var budget = b === "" ? null : Math.round(parseFloat(b) * 100) / 100;
     if (budget !== null && !(budget >= 0)) { $("#evBudget").focus(); return; }
-    var doc = { name: name, budget: budget, separate: $("#evSeparate").checked, note: $("#evNote").value.trim() };
+    var doc = { name: name, budget: budget, separate: $("#evSeparate").checked, note: $("#evNote").value.trim(), mod: Date.now() };
     $("#eventSheet").hidden = true;
     if (editingEventId) {
       store.update("events", editingEventId, doc).then(function () { toast("Updated " + name); });
     } else {
       var id = uid();
-      Object.assign(doc, { id: id, closed: false, createdAt: Date.now() });
+      Object.assign(doc, { id: id, closed: false, createdAt: Date.now(), mod: Date.now() });
       storeReady.then(function () { return store.add("events", doc); }).then(function () {
         setCtx(id);
         if (view !== "add") showView("add"); else renderAdd();
@@ -1183,8 +1200,8 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     var key = monthOf(todayStr());
     var existing = entries.filter(function (e) { return e.kind === "aside" && monthOf(e.date) === key; });
     var chain = Promise.resolve();
-    existing.forEach(function (e) { chain = chain.then(function () { return store.remove("entries", e.id); }); });
-    if (amount > 0) chain = chain.then(function () { return store.add("entries", { id: uid(), kind: "aside", item: "Set aside", amount: Math.round(amount * 100) / 100, currency: settings.currency, category: "aside", date: todayStr(), ts: Date.now(), note: "", eventId: null, raw: "" }); });
+    existing.forEach(function (e) { chain = chain.then(function () { markDeleted(e.id); return store.remove("entries", e.id); }); });
+    if (amount > 0) chain = chain.then(function () { return store.add("entries", { id: uid(), kind: "aside", item: "Set aside", amount: Math.round(amount * 100) / 100, currency: settings.currency, category: "aside", date: todayStr(), ts: Date.now(), mod: Date.now(), note: "", eventId: null, raw: "" }); });
     chain.then(function () { toast("Set aside " + money(amount) + " this month"); });
   });
 
@@ -1229,16 +1246,17 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
       if (P.categorize(item) !== editCat) settings.learned[key] = editCat; else delete settings.learned[key];
       saveSettings();
     }
-    store.update("entries", id, { item: item, amount: Math.round(amount * 100) / 100, date: date, note: note, kind: editKind, category: editKind === "income" ? "income" : editKind === "aside" ? "aside" : editCat, eventId: editKind === "aside" ? null : ($("#editEvent").value || null) });
+    store.update("entries", id, { item: item, amount: Math.round(amount * 100) / 100, date: date, note: note, kind: editKind, category: editKind === "income" ? "income" : editKind === "aside" ? "aside" : editCat, eventId: editKind === "aside" ? null : ($("#editEvent").value || null), mod: Date.now() });
     closeEdit();
     toast("Updated");
   });
   $("#editDelete").addEventListener("click", function () {
     if (deleteArmed !== editingId) { deleteArmed = editingId; this.textContent = "Tap again to delete"; return; }
     var e = entries.find(function (x) { return x.id === editingId; });
+    markDeleted(editingId);
     store.remove("entries", editingId);
     closeEdit();
-    toast("Deleted " + (e ? e.item : ""), { label: "Undo", action: function () { if (e) store.add("entries", e); } });
+    toast("Deleted " + (e ? e.item : ""), { label: "Undo", action: function () { if (e) { unmarkDeleted(e.id); store.add("entries", Object.assign({}, e, { mod: Date.now() })); } } });
   });
 
   // ---------- Settings ----------
@@ -1252,7 +1270,7 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
   syncSettingsUI();
   curSel.addEventListener("change", function () { settings.currency = this.value; settings.currencyAuto = false; fmtCache = {}; saveSettings(); renderAll(); });
   langSel.addEventListener("change", function () { settings.lang = this.value; saveSettings(); });
-  $("#settingsBtn").addEventListener("click", function () { renderInstallText(); $("#settingsSheet").hidden = false; });
+  $("#settingsBtn").addEventListener("click", function () { renderInstallText(); renderGdrive(); $("#settingsSheet").hidden = false; });
   $("#settingsClose").addEventListener("click", function () { $("#settingsSheet").hidden = true; $("#exportBox").hidden = true; });
   $("#settingsSheet").addEventListener("click", function (ev) { if (ev.target === ev.currentTarget) { ev.currentTarget.hidden = true; $("#exportBox").hidden = true; } });
   function updateDataText() {
@@ -1266,7 +1284,7 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     var rows = [["date", "type", "item", "amount", "currency", "category", "event", "note"]].concat(entries.slice().reverse().map(function (e) { var ev = e.eventId ? eventsById[e.eventId] : null; return [e.date, e.kind === "income" ? "received" : e.kind === "aside" ? "set aside" : "spent", e.item, e.amount, e.currency || settings.currency, catLabel(e.category), ev ? ev.name : "", e.note || ""]; }));
     return rows.map(function (r) { return r.map(function (v) { v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(","); }).join("\n");
   }
-  function toBackup() { return JSON.stringify({ app: "pocket-tally", version: 2, exported: new Date().toISOString(), currency: settings.currency, learned: settings.learned, events: events, entries: entries }, null, 2); }
+  function toBackup() { return JSON.stringify({ app: "pocket-tally", version: 2, exported: new Date().toISOString(), currency: settings.currency, learned: settings.learned, tombstones: settings.tombstones, events: events, entries: entries }, null, 2); }
   function download(name, text, type) {
     try {
       var blob = new Blob([text], { type: type }); var url = URL.createObjectURL(blob);
@@ -1290,20 +1308,22 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
       if (!Array.isArray(list)) throw new Error("no entries");
       var evList = Array.isArray(data.events) ? data.events : [];
       var validEvents = evList.filter(function (ev) { return ev && typeof ev.name === "string"; })
-        .map(function (ev) { return { id: String(ev.id || uid()), name: ev.name, budget: ev.budget === null || ev.budget === undefined || ev.budget === "" ? null : Number(ev.budget), separate: !!ev.separate, note: ev.note || "", closed: !!ev.closed, createdAt: Number(ev.createdAt) || Date.now() }; });
+        .map(function (ev) { var created = Number(ev.createdAt) || Date.now(); return { id: String(ev.id || uid()), name: ev.name, budget: ev.budget === null || ev.budget === undefined || ev.budget === "" ? null : Number(ev.budget), separate: !!ev.separate, note: ev.note || "", closed: !!ev.closed, createdAt: created, mod: Number(ev.mod) || created }; });
       var knownEvents = {};
       events.concat(validEvents).forEach(function (ev) { knownEvents[ev.id] = 1; });
       var valid = list.filter(function (e) { return e && typeof e.item === "string" && isFinite(Number(e.amount)) && /^\d{4}-\d{2}-\d{2}$/.test(String(e.date)); })
         .map(function (e) {
           var kind = e.kind === "income" ? "income" : e.kind === "aside" ? "aside" : "expense";
           var cat = kind === "income" ? "income" : kind === "aside" ? "aside" : (P.LEGACY_CATEGORY[e.category] || (P.CATEGORY_BY_ID[e.category] && e.category !== "income" && e.category !== "aside" ? e.category : "other"));
-          return { id: String(e.id || uid()), kind: kind, item: e.item, amount: Number(e.amount), currency: e.currency || settings.currency, category: cat, date: e.date, ts: Number(e.ts) || parseDate(e.date).getTime(), note: e.note || "", eventId: e.eventId && knownEvents[e.eventId] ? e.eventId : null, raw: e.raw || "" };
+          var ts = Number(e.ts) || parseDate(e.date).getTime();
+          return { id: String(e.id || uid()), kind: kind, item: e.item, amount: Number(e.amount), currency: e.currency || settings.currency, category: cat, date: e.date, ts: ts, mod: Number(e.mod) || ts, note: e.note || "", eventId: e.eventId && knownEvents[e.eventId] ? e.eventId : null, raw: e.raw || "" };
         });
       var mergedEvents = events.slice();
       validEvents.forEach(function (ev) { if (!mergedEvents.some(function (x) { return x.id === ev.id; })) mergedEvents.push(ev); });
       var merged = entries.slice(), added = 0;
       valid.forEach(function (e) { if (!merged.some(function (x) { return x.id === e.id; })) { merged.push(e); added++; } });
       if (data.learned && typeof data.learned === "object") { Object.assign(settings.learned, data.learned); saveSettings(); }
+      if (data.tombstones && typeof data.tombstones === "object") { settings.tombstones = S ? S.mergeTombstones(settings.tombstones, data.tombstones, Date.now()) : settings.tombstones; saveSettings(); }
       if (data.currency && settings.currencyAuto) { settings.currency = data.currency; fmtCache = {}; saveSettings(); syncSettingsUI(); }
       store.replaceAll("events", mergedEvents).then(function () { return store.replaceAll("entries", merged); }).then(function () { toast("Restored " + added + " entr" + (added === 1 ? "y" : "ies")); });
     } catch (e) { toast("That isn't a Pocket Tally backup."); }
@@ -1326,8 +1346,110 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     if (!clearArmed) { clearArmed = true; this.textContent = "Tap again to delete every entry and event"; var self = this; setTimeout(function () { clearArmed = false; self.textContent = "Delete everything"; }, 4000); return; }
     clearArmed = false; this.textContent = "Delete everything";
     setCtx(null);
+    var now = Date.now();
+    entries.forEach(function (e) { settings.tombstones[e.id] = now; });
+    events.forEach(function (ev) { settings.tombstones[ev.id] = now; });
+    saveSettings();
     store.replaceAll("entries", []).then(function () { return store.replaceAll("events", []); }).then(function () { toast("Everything deleted"); });
   });
+
+  // ---------- Google Drive sync (the person's own Drive, app-data folder) ----------
+  var S = window.PocketTallySync || null;
+  var GOOGLE_CLIENT_ID = window.POCKET_TALLY_GOOGLE_CLIENT_ID || "";
+  var applyingRemote = false, syncTimer = null, syncing = false, syncAfterLoad = false;
+  function gdriveAvailable() { return !!(GOOGLE_CLIENT_ID && S) && !inArtifact; }
+  function redirectUri() { return location.origin + location.pathname; }
+  function tokenValid() { return !!(settings.gdrive.token && settings.gdrive.expiresAt - 60000 > Date.now()); }
+  function startAuth(silent) {
+    var state = uid();
+    try { sessionStorage.setItem("pockettally.oauthstate", state); if (silent) sessionStorage.setItem("pockettally.silentTried", "1"); } catch (e) {}
+    location.href = S.authUrl(GOOGLE_CLIENT_ID, redirectUri(), state, silent);
+  }
+  (function handleAuthReturn() {
+    if (!S) return;
+    var r = S.parseHash(location.hash);
+    if (!r) return;
+    try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+    var expected = null;
+    try { expected = sessionStorage.getItem("pockettally.oauthstate"); sessionStorage.removeItem("pockettally.oauthstate"); } catch (e) {}
+    if (r.error) {
+      settings.gdrive.token = null; saveSettings();
+      if (["interaction_required", "login_required", "consent_required"].indexOf(r.error) < 0) toast("Google sign-in didn't complete (" + r.error + ").");
+      return;
+    }
+    if (expected && r.state !== expected) { toast("That sign-in didn't come from this app. Try again."); return; }
+    settings.gdrive.connected = true;
+    settings.gdrive.token = r.access_token;
+    settings.gdrive.expiresAt = Date.now() + (r.expires_in || 3600) * 1000;
+    saveSettings();
+    syncAfterLoad = true;
+  })();
+  function localSnapshot() { return { currency: settings.currency, learned: settings.learned, tombstones: settings.tombstones, entries: entries.slice(), events: events.slice() }; }
+  function syncNow(opts) {
+    opts = opts || {};
+    if (!gdriveAvailable() || !settings.gdrive.connected || syncing) return Promise.resolve();
+    if (!tokenValid()) {
+      if (opts.interactive) { startAuth(false); return Promise.resolve(); }
+      var tried = false; try { tried = sessionStorage.getItem("pockettally.silentTried") === "1"; } catch (e) {}
+      if (opts.allowRedirect && !tried) { startAuth(true); return Promise.resolve(); }
+      renderGdrive(); return Promise.resolve();
+    }
+    syncing = true; renderGdrive();
+    var token = settings.gdrive.token, fileId = settings.gdrive.fileId, local = localSnapshot();
+    return (fileId ? Promise.resolve({ id: fileId }) : S.driveFind(token)).then(function (file) {
+      fileId = file ? file.id : null;
+      if (!fileId) return null;
+      return S.driveDownload(token, fileId).catch(function (err) { if (err.code === "drive_404") { fileId = null; return null; } throw err; });
+    }).then(function (remote) {
+      var merged = S.merge(local, remote);
+      var changedLocal = S.fingerprint(merged) !== S.fingerprint(local);
+      var changedRemote = !remote || S.fingerprint(merged) !== S.fingerprint(remote);
+      var p = Promise.resolve();
+      if (changedLocal) {
+        applyingRemote = true;
+        settings.learned = merged.learned; settings.tombstones = merged.tombstones; saveSettings();
+        p = p.then(function () { return store.replaceAll("events", merged.events); }).then(function () { return store.replaceAll("entries", merged.entries); }).then(function () { applyingRemote = false; });
+      }
+      if (changedRemote) p = p.then(function () { return S.driveUpload(token, fileId, merged); }).then(function (id) { fileId = id; });
+      return p;
+    }).then(function () {
+      settings.gdrive.fileId = fileId; settings.gdrive.lastSync = Date.now(); saveSettings();
+      if (opts.toast) toast("Synced with Google Drive");
+    }).catch(function (err) {
+      applyingRemote = false;
+      if (err && err.code === "unauthorized") { settings.gdrive.token = null; saveSettings(); if (opts.toast) toast("Google sign-in expired. Tap Sign in again."); }
+      else toast("Sync didn't go through: " + ((err && err.message) || "no connection"));
+    }).then(function () { syncing = false; renderGdrive(); });
+  }
+  function scheduleSync() {
+    if (!gdriveAvailable() || !settings.gdrive.connected || applyingRemote) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(function () { syncNow({}); }, 4000);
+  }
+  function markDeleted(id) { settings.tombstones[id] = Date.now(); saveSettings(); }
+  function unmarkDeleted(id) { delete settings.tombstones[id]; saveSettings(); }
+  function ago(ts) { var s = Math.round((Date.now() - ts) / 1000); if (s < 60) return "just now"; if (s < 3600) return Math.round(s / 60) + " min ago"; if (s < 86400) return Math.round(s / 3600) + " h ago"; return new Date(ts).toLocaleDateString(); }
+  function renderGdrive() {
+    var row = $("#gdriveRow"), t = $("#gdriveText"), c = $("#gdriveConnect"), sy = $("#gdriveSync"), d = $("#gdriveDisconnect");
+    if (inArtifact) { row.hidden = true; return; }
+    row.hidden = false;
+    if (!gdriveAvailable()) { t.textContent = "Not switched on in this build yet. Once it is, Connect keeps a copy in a private folder of your own Google Drive, so your entries follow you to any phone."; c.hidden = true; sy.hidden = true; d.hidden = true; return; }
+    var g = settings.gdrive;
+    if (!g.connected) { t.textContent = "Keeps a copy in a private folder of your own Google Drive, visible only to this app, so your entries follow you to any phone. Nothing is stored with us."; c.hidden = false; sy.hidden = true; d.hidden = true; return; }
+    c.hidden = true; sy.hidden = false; d.hidden = false;
+    sy.textContent = syncing ? "Syncing…" : (tokenValid() ? "Sync now" : "Sign in again");
+    t.textContent = syncing ? "Syncing with Google Drive…" : (g.lastSync ? "Connected · last synced " + ago(g.lastSync) : "Connected · not synced yet") + (tokenValid() ? "" : " · sign-in needed");
+  }
+  $("#gdriveConnect").addEventListener("click", function () { settings.gdrive.connected = true; saveSettings(); startAuth(false); });
+  $("#gdriveSync").addEventListener("click", function () { syncNow({ interactive: true, toast: true }); });
+  $("#gdriveDisconnect").addEventListener("click", function () {
+    var tok = settings.gdrive.token;
+    settings.gdrive = { connected: false, token: null, expiresAt: 0, fileId: null, lastSync: 0 }; saveSettings();
+    if (tok && S) S.revoke(tok);
+    renderGdrive(); toast("Disconnected. Your entries stay on this phone.");
+  });
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) syncNow({}); });
+  storeReady.then(function () { if (gdriveAvailable() && settings.gdrive.connected) syncNow({ allowRedirect: !syncAfterLoad }); });
 
   // ---------- install ----------
   window.addEventListener("beforeinstallprompt", function (ev) { ev.preventDefault(); deferredInstall = ev; renderInstallCard(); renderInstallText(); });
