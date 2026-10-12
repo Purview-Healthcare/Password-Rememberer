@@ -279,3 +279,31 @@ test("weekdays and days ago", () => {
   assert.equal(P.parse("cab 85 last week").entries[0].dayOffset, -7);
   assert.equal(P.parse("lunch 200 on monday", undefined, undefined, wed).entries[0].item, "Lunch");
 });
+
+test("misspelled key words still decide in vs out", () => {
+  for (const [said, kind, item, amount] of [
+    ["recevied 90000", "income", "Received", 90000],
+    ["Recieved 90000", "income", "Received", 90000],
+    ["recived 5000 from dad", "income", "Dad", 5000],
+    ["salry 69000", "income", "Salary", 69000],
+    ["salery credited 69000", "income", "Salary", 69000],
+    ["set a side 10000", "aside", "Set aside", 10000],
+    ["setaside 10000", "aside", "Set aside", 10000],
+    ["amazon refudn 1200", "income", "Amazon refund", 1200],
+    ["recieve 500 cashbak", "income", "Cashback", 500],
+  ]) {
+    const e = P.parse(said).entries[0];
+    assert.equal(e.kind, kind, said);
+    assert.equal(e.item, item, said);
+    assert.equal(e.amount, amount, said);
+  }
+  // ordinary words near the cue words must not be touched
+  assert.equal(P.parse("salad 300").entries[0].kind, "expense");
+  assert.equal(P.parse("salad 300").entries[0].item, "Salad");
+  assert.equal(P.parse("recent purchase 300").entries[0].kind, "expense");
+  assert.equal(P.parse("receipt 300").entries[0].item, "Receipt");
+  assert.equal(P.parse("sent me 5000").entries[0].kind, "income");
+  assert.equal(P.parse("scented candles 300").entries[0].item, "Scented candles");
+  assert.equal(P.fuzzWord("coffee"), "coffee");
+  assert.equal(P.fuzzWord("recevied"), "received");
+});
