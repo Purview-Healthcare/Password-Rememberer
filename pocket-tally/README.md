@@ -1,21 +1,23 @@
 # Pocket Tally
 
-Say what you bought. Pocket Tally works out the item and the amount, saves it, and shows where your money goes.
+Say what you received and what you spent. Pocket Tally keeps the two columns, your month and your events, all on your own phone.
 
-It is a small web app that installs to the home screen on **both Android and iPhone** from one codebase. Nothing is sent to a server: purchases stay on your phone.
+It is an installable web app that goes on the home screen of **both Android and iPhone** from one codebase. It takes only what you tell it: no bank access, no account, no server. Entries stay on the device; a backup is a file you keep wherever you like.
 
 ## How it works
 
-1. Open it from your home screen.
-2. Tap the mic and say something like **"coffee 4.50"**, **"spent 120 on groceries at Walmart"**, **"uber 15 yesterday"** or **"lunch 12 and parking 5"**.
-3. It saves the item, the amount and a category straight away. A toast shows what it saved, with Undo.
-4. If it only caught the amount (or only the item), it asks for the missing half.
-5. **History** lists every purchase by day. Tap one to change the name, amount, category, date or note. Changing a category teaches it: next time the same item goes there automatically.
-6. **Insights** shows the total for the week, month, last 30 days or all time, the split by category, a day-by-day chart, and your most repeated purchases.
+1. **Received.** At the start of the month (or whenever money comes in) say **"received 69000"** or **"salary 69000"**. It goes in the Received column.
+2. **Set aside.** Say **"set aside 10000"** for savings, bills you pay later, anything you don't want counted as spendable. Your month's budget is what you received minus this.
+3. **Spent.** Say **"coffee 40"**, **"cab 85"**, **"kids 330 on shoes and 40 on lunch"**. Each becomes an entry with a name, amount and group. The home screen shows what's left this month.
+4. **Note it down.** Tap any entry to change the name, amount, date, group or event, and to add a note. Changing a group teaches it: the same item goes there next time.
+5. **Events.** A trip, a wedding, a client project. Tap **+ Event**, give it a name and, if you like, a budget. Two kinds:
+   - **Part of my month**: its spending counts in your month and the event keeps its own subtotal (a Goa trip with a ₹20,000 budget).
+   - **Separate money**: its own pot, never touching your month (a client gives you ₹30,000 for a project and wants to see where it went). Leave the budget empty to just keep track.
+   
+   While an event chip is selected, everything you say goes there. From Everyday you can also say **"cab 85 for the Goa trip"** and it finds the event by name. Say **"received 5000"** inside an event to add money to its pot.
+6. **History** lists every entry by day. **Insights** shows the month's plan (received, set aside, budget, spent, left), the split by group, day by day, and your most repeated entries.
 
 Amounts can be digits or words ("two hundred and fifty", "1.5k", "four dollars fifty"). Saying "rupees" or "dollars" the first time sets the currency; you can also pick it in Settings.
-
-Money coming in works too: **"salary received 69000"**, **"cash on hand 5000"** or **"+500 refund"** are saved as received, and once there is any income the home screen shows your running **balance** (received minus spent). Spending groups: Food & Groceries, Transport, Bills & Home, Shopping & Fun, Health, Payments & Loans (credit cards, BNPL, EMIs), Savings & Investments, Family, Other.
 
 ## Put it on your phone
 
@@ -41,14 +43,14 @@ Then on the phone:
 | File | Purpose |
 |---|---|
 | `index.html` | The whole app: layout, styles and logic |
-| `parser.js` | Turns "spent 120 on groceries" into item, amount, currency, category and date |
+| `parser.js` | Turns "kids spent 330 on shoes for the Goa trip" into kind, item, amount, currency, group, date and event |
 | `parser.test.mjs` | Tests for the parser: `node --test pocket-tally/parser.test.mjs` |
 | `sw.js` | Service worker so the app opens with no connection |
 | `manifest.webmanifest`, `icons/` | What makes it installable |
 
 ## Your data
 
-Purchases are stored in the browser's local storage on the device. Use **Settings → Download backup** now and then, and **Restore backup** (or **Paste a backup**) on a new phone. **Download CSV** gives a spreadsheet-friendly export.
+Entries and events are stored in the browser's local storage on the device. Use **Settings → Download backup** now and then, and **Restore backup** (or **Paste a backup**) on a new phone. **Download CSV** gives a spreadsheet-friendly export. Sync through the person's own Google Drive is the planned next step; it needs a one-time Google Cloud setup to issue the app an OAuth client.
 
 ## Running locally
 

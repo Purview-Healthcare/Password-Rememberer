@@ -5,8 +5,8 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const P = require("./parser.js");
 
-function one(text, learned) {
-  const r = P.parse(text, learned);
+function one(text, learned, events) {
+  const r = P.parse(text, learned, events);
   assert.equal(r.entries.length, 1, `expected one entry for "${text}", got ${JSON.stringify(r.entries)}`);
   return r.entries[0];
 }
@@ -57,6 +57,47 @@ for (const [text, item, amount, category, currency, dayOffset] of cases) {
   });
 }
 
+test("drops the spend verb and preposition around the amount", () => {
+  assert.equal(one("kids spent 330 on shoes").item, "Kids shoes");
+  assert.equal(one("spent 500 in the mall").item, "Mall");
+  assert.equal(one("the kids 40 for lunch").item, "Kids lunch");
+  assert.equal(one("dinner was 860 at olive garden").item, "Dinner olive garden");
+});
+
+test("kids spent 330 on shoes and 40 on lunch -> two entries", () => {
+  const r = P.parse("kids spent 330 on shoes and 40 on lunch");
+  assert.deepEqual(r.entries.map(e => [e.item, e.amount]), [["Kids shoes", 330], ["Lunch", 40]]);
+});
+
+test("set aside is its own kind", () => {
+  const e = one("set aside 10000");
+  assert.equal(e.kind, "aside");
+  assert.equal(e.amount, 10000);
+  assert.equal(e.item, "Set aside");
+  assert.equal(e.category, "aside");
+  const e2 = one("keep aside 2000 for rent");
+  assert.equal(e2.kind, "aside");
+  assert.equal(e2.item, "Set aside · Rent");
+});
+
+test("event names are matched and removed", () => {
+  const events = [{ id: "ev1", name: "Goa trip" }, { id: "ev2", name: "Client project" }];
+  let e = one("cab 85 for the goa trip", undefined, events);
+  assert.equal(e.eventId, "ev1");
+  assert.equal(e.item, "Cab");
+  assert.equal(e.amount, 85);
+  e = one("hotel 4500 goa", undefined, events);
+  assert.equal(e.eventId, "ev1");
+  assert.equal(e.item, "Hotel");
+  e = one("printing 300 for the client project", undefined, events);
+  assert.equal(e.eventId, "ev2");
+  assert.equal(e.item, "Printing");
+  e = one("coffee 40", undefined, events);
+  assert.equal(e.eventId, null);
+  const r = P.parse("lunch 200 and taxi 150 on the goa trip", undefined, events);
+  assert.deepEqual(r.entries.map(x => [x.item, x.amount, x.eventId]), [["Lunch", 200, "ev1"], ["Taxi", 150, "ev1"]]);
+});
+
 test("splits two purchases said in one breath", () => {
   const r = P.parse("coffee 5 and sandwich 8");
   assert.equal(r.entries.length, 2);
@@ -93,6 +134,8 @@ test("income is detected and categorised as income", () => {
     ["received 500 refund from amazon", "Refund from amazon", 500],
     ["+250 cashback", "Cashback", 250],
     ["cash on hand 5000", "Cash on hand", 5000],
+    ["received 69000 rupees", "Received", 69000],
+    ["received 69000", "Received", 69000],
   ]) {
     const e = one(text);
     assert.equal(e.kind, "income", text);
