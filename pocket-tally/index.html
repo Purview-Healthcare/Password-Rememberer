@@ -328,6 +328,7 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
           <button type="button">set aside 10000</button>
           <button type="button">kids 330 on shoes and 40 on lunch</button>
           <button type="button">3 coffees 40 each</button>
+          <button type="button">how much have I spent?</button>
         </div>
       </div>
 
@@ -500,6 +501,12 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
         <div class="field"><label for="langSel">Voice language</label><select id="langSel"></select></div>
         <p>Pick the accent you speak with. Item names can be in any language; amounts and category hints work best in English.</p>
       </div>
+      <div class="settings-row">
+        <label class="switch">
+          <span>Read replies aloud<small>Hear what was saved, and answers to "how much have I spent?". Handy with earphones.</small></span>
+          <input id="speakToggle" type="checkbox">
+        </label>
+      </div>
       <div class="settings-row" id="installRow">
         <h3>Home screen</h3>
         <p id="installText"></p>
@@ -567,7 +574,7 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     var region = (lang.split("-")[1] || "").toUpperCase();
     return REGION_CURRENCY[region] || "USD";
   }
-  function defaultSettings() { return { currency: guessCurrency(), currencyAuto: true, lang: "", learned: {}, installDismissed: false, tombstones: {}, gdrive: { connected: false, token: null, expiresAt: 0, fileId: null, lastSync: 0 } }; }
+  function defaultSettings() { return { currency: guessCurrency(), currencyAuto: true, lang: "", learned: {}, installDismissed: false, speak: false, tombstones: {}, gdrive: { connected: false, token: null, expiresAt: 0, fileId: null, lastSync: 0 } }; }
   var settings = defaultSettings();
   try { var saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"); Object.assign(settings, saved); } catch (e) {}
   if (!settings.learned) settings.learned = {};
@@ -876,7 +883,7 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
       };
       rec.onend = function () {
         setMic("idle");
-        if (finalText.trim()) { status("Tap the mic and say what you spent or received"); handleUtterance(finalText.trim()); }
+        if (finalText.trim()) { status("Tap the mic and say what you spent or received"); handleUtterance(finalText.trim(), "voice"); }
         else if (!errored) status("Didn't catch that. Tap the mic and try again, or type it.");
       };
       rec.start();
@@ -929,8 +936,42 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     qItem.focus();
   });
 
-  function handleUtterance(text) {
-    var result = P.parse(text, settings.learned, activeEvents().map(function (ev) { return { id: ev.id, name: ev.name }; }));
+  var lastAddedId = null;
+  var CURRENCY_SPOKEN = { INR: "rupees", USD: "dollars", EUR: "euros", GBP: "pounds", JPY: "yen", CAD: "dollars", AUD: "dollars", NZD: "dollars", SGD: "dollars", AED: "dirhams", SAR: "riyals", CHF: "francs", MYR: "ringgit", PHP: "pesos", MXN: "pesos", ZAR: "rand", NGN: "naira", KES: "shillings", BDT: "taka", BRL: "reais" };
+  function spokenMoney(n) { n = Number(n) || 0; var whole = Math.abs(n - Math.round(n)) < 0.005; return (whole ? String(Math.round(n)) : n.toFixed(2)) + " " + (CURRENCY_SPOKEN[settings.currency] || settings.currency); }
+  function speak(text, force) {
+    if (!("speechSynthesis" in window) || (!settings.speak && !force)) return;
+    try { speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(text); u.lang = settings.lang || navigator.language || "en-US"; speechSynthesis.speak(u); } catch (e) {}
+  }
+  function undoLast(source) {
+    var e = lastAddedId ? entries.find(function (x) { return x.id === lastAddedId; }) : null;
+    if (!e) e = entries.slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); })[0];
+    if (!e) { status("Nothing to undo."); return; }
+    markDeleted(e.id); store.remove("entries", e.id); lastAddedId = null;
+    var msg = "Removed " + e.item + " · " + money(e.amount);
+    toast(msg, { label: "Put back", action: function () { unmarkDeleted(e.id); store.add("entries", Object.assign({}, e, { mod: Date.now() })); } });
+    status(msg);
+    speak("Removed " + e.item + ", " + spokenMoney(e.amount), source === "voice");
+  }
+  function sayStatus(source) {
+    var today = todayStr(), m = monthStats(monthOf(today));
+    var todaySpent = sum(entries.filter(function (e) { return isSpend(e) && ownMoney(e) && e.date === today; }));
+    var ev = ctx ? eventsById[ctx] : null, msg, said;
+    if (ev) {
+      var st = eventStats(ev);
+      msg = ev.name + ": spent " + money(st.spent) + (st.hasFunds ? " · " + money(st.left) + " left of " + money(st.funds) : "");
+      said = ev.name + ": spent " + spokenMoney(st.spent) + (st.hasFunds ? ", " + spokenMoney(st.left) + " left" : "");
+    } else {
+      msg = "Spent " + money(todaySpent) + " today · " + money(m.spent) + " this month" + (m.hasPlan ? " · " + money(m.left) + " left" : "");
+      said = "Spent " + spokenMoney(todaySpent) + " today, " + spokenMoney(m.spent) + " this month" + (m.hasPlan ? ", " + spokenMoney(m.left) + " left" : "");
+    }
+    status(msg); toast(msg); showTranscript("", false);
+    speak(said, source === "voice");
+  }
+  function handleUtterance(text, source) {
+    var result = P.parse(text, settings.learned, activeEvents().map(function (ev) { return { id: ev.id, name: ev.name }; }), new Date());
+    if (result.command === "undo") { undoLast(source); return; }
+    if (result.command === "status") { sayStatus(source); return; }
     result.entries.forEach(function (e) { if (!e.eventId && ctx && e.kind !== "aside") e.eventId = ctx; });
     var complete = result.entries.filter(function (e) { return e.item && e.amount != null; });
     var incomplete = result.entries.filter(function (e) { return !(e.item && e.amount != null); });
@@ -947,8 +988,10 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     var qty = kind === "expense" && Number(e.qty) >= 1 ? Math.round(Number(e.qty)) : 1;
     var entry = { id: uid(), kind: kind, item: e.item, amount: e.amount, qty: qty, unit: Number(e.unit) > 0 ? Number(e.unit) : Math.round(e.amount / qty * 100) / 100, currency: e.currency || settings.currency, category: kind === "income" ? "income" : kind === "aside" ? "aside" : (e.category || "other"), date: todayStr(e.dayOffset || 0), ts: Date.now(), mod: Date.now(), note: "", eventId: kind === "aside" ? null : (e.eventId || null), raw: e.raw || "" };
     return storeReady.then(function () { return store.add("entries", entry); }).then(function () {
+      lastAddedId = entry.id;
       var ev = entry.eventId ? eventsById[entry.eventId] : null;
       var head = kind === "income" ? "Received · " : kind === "aside" ? "Set aside · " : "Saved · ";
+      speak((kind === "income" ? "Received " : kind === "aside" ? "Set aside " : "Saved ") + entry.item + (entry.qty > 1 ? " times " + entry.qty : "") + ", " + spokenMoney(entry.amount) + (ev ? ", " + ev.name : ""));
       toast(head + entry.item + (entry.qty > 1 ? " ×" + entry.qty : "") + " · " + (kind === "income" ? "+" : "") + money(entry.amount) + (ev ? " · " + ev.name : ""), { label: "Undo", action: function () { markDeleted(entry.id); store.remove("entries", entry.id); } });
       showTranscript("", false);
     });
@@ -1333,6 +1376,8 @@ main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
   syncSettingsUI();
   curSel.addEventListener("change", function () { settings.currency = this.value; settings.currencyAuto = false; fmtCache = {}; saveSettings(); renderAll(); });
   langSel.addEventListener("change", function () { settings.lang = this.value; saveSettings(); });
+  $("#speakToggle").checked = !!settings.speak;
+  $("#speakToggle").addEventListener("change", function () { settings.speak = this.checked; saveSettings(); if (this.checked) speak("Okay, I'll read replies aloud.", true); });
   $("#settingsBtn").addEventListener("click", function () { renderInstallText(); renderGdrive(); $("#settingsSheet").hidden = false; });
   $("#settingsClose").addEventListener("click", function () { $("#settingsSheet").hidden = true; $("#exportBox").hidden = true; });
   $("#settingsSheet").addEventListener("click", function (ev) { if (ev.target === ev.currentTarget) { ev.currentTarget.hidden = true; $("#exportBox").hidden = true; } });
