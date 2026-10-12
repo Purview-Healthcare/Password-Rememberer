@@ -12,44 +12,54 @@
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
-  // ---------- categories (8 colored slots + Other) ----------
+  // ---------- categories (8 colored groups + Other; Income is a kind, not a spend group) ----------
   var CATEGORIES = [
-    { id: "groceries", label: "Groceries", keywords: [
-      "grocery", "groceries", "supermarket", "walmart", "costco", "kroger", "aldi", "lidl", "tesco",
-      "sainsbury", "sainsburys", "asda", "safeway", "publix", "wegmans", "whole foods", "trader joes",
-      "trader joe's", "bigbasket", "big basket", "dmart", "d mart", "reliance fresh", "blinkit", "zepto",
-      "instamart", "vegetables", "veggies", "fruits", "fruit", "milk", "eggs", "bread", "rice", "flour",
-      "atta", "dal", "produce", "market", "sabzi", "provisions", "ration"
-    ] },
-    { id: "food", label: "Food & Drink", keywords: [
+    { id: "food", label: "Food & Groceries", keywords: [
       "coffee", "tea", "chai", "latte", "cappuccino", "espresso", "lunch", "dinner", "breakfast", "brunch",
       "restaurant", "pizza", "burger", "burgers", "sandwich", "snack", "snacks", "starbucks", "mcdonalds",
       "mcdonald's", "subway", "kfc", "dominos", "domino's", "cafe", "café", "canteen", "takeout", "takeaway",
       "swiggy", "zomato", "doordash", "ubereats", "uber eats", "grubhub", "deliveroo", "drinks", "beer",
       "wine", "bar", "pub", "biryani", "dosa", "idli", "samosa", "thali", "noodles", "sushi", "tacos",
-      "food", "meal", "juice", "smoothie", "dessert", "ice cream", "cake", "chocolate", "bakery", "donut",
-      "donuts", "boba", "bubble tea", "water bottle", "soda", "cola"
+      "food", "meal", "meals", "juice", "smoothie", "dessert", "ice cream", "cake", "chocolate", "bakery",
+      "donut", "donuts", "boba", "bubble tea", "water bottle", "soda", "cola", "poori", "puri", "bonda",
+      "vada", "shawarma", "horlicks", "bournvita", "maggi", "roti", "chapati", "paratha", "curry", "tiffin",
+      "biscuits", "chips", "protein shake", "protein shakes", "shake", "pasta", "eggs", "milk", "bread",
+      "grocery", "groceries", "supermarket", "walmart", "costco", "kroger", "aldi", "lidl", "tesco",
+      "sainsbury", "sainsburys", "asda", "safeway", "publix", "wegmans", "whole foods", "trader joes",
+      "trader joe's", "bigbasket", "big basket", "dmart", "d mart", "reliance fresh", "blinkit", "zepto",
+      "instamart", "vegetables", "veggies", "fruits", "fruit", "rice", "flour", "atta", "dal", "produce",
+      "market", "sabzi", "provisions", "ration"
     ] },
-    { id: "transport", label: "Transport", keywords: [
-      "uber", "lyft", "ola", "taxi", "cab", "auto", "rickshaw", "bus", "train", "metro", "subway fare",
+    { id: "transport", label: "Travel & Transport", keywords: [
+      "hotel", "hotels", "resort", "airbnb", "hostel", "lodge", "oyo", "homestay", "stay", "booking", "makemytrip",
+      "goibibo", "agoda", "visa", "luggage", "suitcase", "trip", "travel", "holiday", "vacation", "sightseeing",
+      "uber", "lyft", "ola", "taxi", "cab", "cab ride", "auto", "rickshaw", "bus", "train", "metro", "subway fare",
       "tram", "fuel", "gas", "gasoline", "petrol", "diesel", "parking", "toll", "tolls", "flight",
       "flights", "airfare", "airline", "rapido", "car wash", "carwash", "bike", "scooter", "rental car",
       "car rental", "fastag", "commute", "ticket to", "railway", "irctc", "indigo", "ryanair", "transit"
     ] },
-    { id: "bills", label: "Bills & Utilities", keywords: [
+    { id: "bills", label: "Bills & Home", keywords: [
       "electricity", "electric", "power bill", "water bill", "internet", "wifi", "wi-fi", "broadband",
-      "phone bill", "mobile bill", "recharge", "rent", "insurance", "premium", "subscription", "emi",
-      "loan", "mortgage", "tax", "taxes", "bill", "bills", "utility", "utilities", "maintenance fee",
-      "society maintenance", "gas bill", "tuition", "school fees", "fees", "icloud", "google one",
-      "dropbox", "chatgpt", "claude", "netflix", "spotify", "prime", "hotstar", "disney", "hulu",
-      "youtube premium", "apple music"
+      "phone bill", "mobile bill", "recharge", "rent", "insurance", "premium", "subscription", "tax",
+      "taxes", "bill", "bills", "utility", "utilities", "maintenance fee", "society maintenance", "gas bill",
+      "tuition", "school fees", "fees", "icloud", "google one", "dropbox", "chatgpt", "claude", "netflix",
+      "spotify", "prime", "hotstar", "disney", "hulu", "youtube premium", "apple music",
+      "cleaning", "cleaner", "maid", "repair", "repairs", "plumber", "electrician", "carpenter", "laundry",
+      "dry cleaning", "detergent", "soap", "shampoo", "toilet paper", "tissues", "household", "kitchen",
+      "cookware", "appliance", "appliances", "garden", "gardening", "plants", "paint", "painting",
+      "hardware", "home depot", "lowes", "lowe's", "pest control", "curtains", "bedsheet", "pillow",
+      "mattress", "lightbulb", "bulb", "candles", "home"
     ] },
-    { id: "shopping", label: "Shopping", keywords: [
+    { id: "shopping", label: "Shopping & Fun", keywords: [
       "amazon", "flipkart", "myntra", "ajio", "ebay", "etsy", "clothes", "clothing", "shirt", "t-shirt",
       "tshirt", "shoes", "sneakers", "dress", "jeans", "jacket", "mall", "target", "ikea", "furniture",
       "electronics", "headphones", "earbuds", "charger", "cable", "gift", "gifts", "toy", "toys", "book",
       "books", "stationery", "watch", "bag", "backpack", "cosmetics", "makeup", "perfume", "shopping",
-      "best buy", "apple store", "phone case", "decathlon", "nike", "adidas", "zara", "h&m", "uniqlo"
+      "best buy", "apple store", "phone case", "decathlon", "nike", "adidas", "zara", "h&m", "uniqlo",
+      "movie", "movies", "cinema", "film", "pvr", "inox", "amc", "concert", "gig", "game", "games",
+      "gaming", "steam", "playstation", "xbox", "nintendo", "tickets", "show", "theatre", "theater",
+      "museum", "zoo", "park entry", "bowling", "arcade", "club", "party", "karaoke", "comedy", "match",
+      "stadium", "festival", "amusement", "hobby", "entertainment"
     ] },
     { id: "health", label: "Health", keywords: [
       "pharmacy", "chemist", "medicine", "medicines", "meds", "tablets", "doctor", "dentist", "dental",
@@ -57,21 +67,29 @@
       "walgreens", "boots", "medplus", "1mg", "pharmeasy", "checkup", "check-up", "lab test", "blood test",
       "therapy", "physio", "optician", "glasses", "contact lenses", "health"
     ] },
-    { id: "fun", label: "Entertainment", keywords: [
-      "movie", "movies", "cinema", "film", "pvr", "inox", "amc", "concert", "gig", "game", "games",
-      "gaming", "steam", "playstation", "xbox", "nintendo", "tickets", "show", "theatre", "theater",
-      "museum", "zoo", "park entry", "bowling", "arcade", "club", "party", "karaoke", "comedy", "match",
-      "stadium", "festival", "amusement", "hobby", "entertainment"
+    { id: "payments", label: "Payments & Loans", keywords: [
+      "lazypay", "lazy pay", "lazypay bill", "xpresscash", "xpress cash", "navi", "navi emi", "cred", "cred bill", "cred payment", "onecard", "one card", "onecard bill", "credit card",
+      "card payment", "card bill", "emi", "loan", "bnpl", "simpl", "slice", "postpaid", "paytm postpaid",
+      "pay later", "moneyview", "kreditbee", "zestmoney", "repayment", "repaid", "installment", "instalment",
+      "mortgage", "overdraft", "debt", "borrowed", "lent", "due payment", "minimum due"
     ] },
-    { id: "home", label: "Home", keywords: [
-      "cleaning", "cleaner", "maid", "repair", "repairs", "plumber", "electrician", "carpenter", "laundry",
-      "dry cleaning", "detergent", "soap", "shampoo", "toilet paper", "tissues", "household", "kitchen",
-      "cookware", "appliance", "appliances", "garden", "gardening", "plants", "paint", "painting",
-      "hardware", "home depot", "lowes", "lowe's", "pest control", "curtains", "bedsheet", "pillow",
-      "mattress", "lightbulb", "bulb", "candles", "home"
+    { id: "savings", label: "Savings & Investments", keywords: [
+      "mutual fund", "mutual funds", "mf", "sip", "savings", "saving", "investment", "invest", "invested",
+      "fd", "fixed deposit", "rd", "recurring deposit", "ppf", "nps", "stocks", "shares", "etf", "zerodha",
+      "groww", "kuvera", "sgb", "crypto", "bitcoin", "emergency fund", "allocation", "piggy bank"
     ] },
-    { id: "other", label: "Other", keywords: [] }
+    { id: "family", label: "Family", keywords: [
+      "dad", "mom", "mum", "papa", "mummy", "amma", "appa", "father", "mother", "parents", "brother",
+      "sister", "bro", "sis", "wife", "husband", "son", "daughter", "kids", "family", "grandma", "grandpa",
+      "home money", "pocket money"
+    ] },
+    { id: "other", label: "Other", keywords: [] },
+    { id: "income", label: "Received", keywords: [] },
+    { id: "aside", label: "Set aside", keywords: [] }
   ];
+
+  // ids from the first release, folded into the groups above
+  var LEGACY_CATEGORY = { groceries: "food", home: "bills", fun: "shopping" };
 
   var CATEGORY_BY_ID = {};
   CATEGORIES.forEach(function (c) { CATEGORY_BY_ID[c.id] = c; });
@@ -236,7 +254,14 @@
         var tail = text.slice(end).match(consumeNext === 2 ? /^\s*[^\s]+\s+[^\s]+/ : /^\s*[^\s]+/);
         if (tail) removeEnd = end + tail[0].length;
       }
-      candidates.push({ value: value, currency: currency, start: removeStart, end: removeEnd, score: score, order: candidates.length });
+      // the word before the amount phrase and the word after it (for "spent 330 on shoes" -> "shoes")
+      var beforeM = text.slice(0, removeStart).match(/([^\s]+)\s*$/);
+      var afterM = text.slice(removeEnd).match(/^\s*([^\s]+)/);
+      candidates.push({
+        value: value, currency: currency, start: removeStart, end: removeEnd, score: score, order: candidates.length,
+        beforeWord: beforeM ? beforeM[1].toLowerCase() : "", beforeStart: beforeM ? removeStart - beforeM[0].length : removeStart,
+        afterWord: afterM ? afterM[1].toLowerCase() : "", afterEnd: afterM ? removeEnd + afterM[0].length : removeEnd
+      });
     }
     if (!candidates.length) return null;
     candidates.sort(function (a, b) { return (b.score - a.score) || (b.order - a.order); });
@@ -256,8 +281,8 @@
   }
 
   // ---------- item cleanup ----------
-  var LEAD_FILLER = ["i", "i've", "ive", "i'd", "we", "just", "spent", "spend", "paid", "payed", "pay", "bought", "buy", "purchased", "got", "get", "picked", "up", "ordered", "booked", "took", "had", "have", "grabbed", "for", "on", "at", "a", "an", "the", "some", "my", "our", "about", "around", "approximately", "roughly", "it", "its", "it's", "was", "were", "is", "cost", "costs", "costed", "me", "us", "of", "to", "and", "worth", "total", "today", "then", "also", "another", "add", "please", "okay", "ok", "so", "um", "uh", "like", "went", "gave", "charged", "owe", "owed", "in", "from", "with", "this", "that", "there", "here", "note", "expense", "spending", "purchase", "payment", "rs", "rupees", "dollars", "bucks", "euros", "pounds", "cents", "each", "per", "only", "again", "yesterday", "tonight", "morning", "evening", "afternoon", "night"];
-  var TRAIL_FILLER = ["for", "on", "at", "of", "to", "a", "an", "the", "was", "were", "is", "cost", "costs", "costed", "each", "total", "in", "and", "about", "around", "approximately", "roughly", "rs", "rupees", "dollars", "bucks", "euros", "pounds", "only", "today", "yesterday", "tonight", "from", "with", "me", "us", "it", "please", "okay", "ok", "then", "worth", "per", "spent", "paid", "bought", "got", "this", "morning", "evening", "afternoon", "night", "last", "there", "here", "just", "so", "um", "uh", "like", "that"];
+  var LEAD_FILLER = ["i", "i've", "ive", "i'd", "we", "just", "spent", "spend", "paid", "payed", "pay", "bought", "buy", "purchased", "got", "get", "picked", "up", "ordered", "booked", "took", "had", "have", "grabbed", "for", "on", "at", "a", "an", "the", "some", "my", "our", "about", "around", "approximately", "roughly", "it", "its", "it's", "was", "were", "is", "cost", "costs", "costed", "me", "us", "of", "to", "and", "worth", "total", "today", "then", "also", "another", "add", "please", "okay", "ok", "so", "um", "uh", "like", "went", "gave", "sent", "transferred", "transfer", "repaid", "charged", "received", "credited", "earned", "owe", "owed", "in", "from", "with", "this", "that", "there", "here", "note", "expense", "spending", "purchase", "payment", "rs", "rupees", "dollars", "bucks", "euros", "pounds", "cents", "each", "per", "only", "again", "yesterday", "tonight", "morning", "evening", "afternoon", "night"];
+  var TRAIL_FILLER = ["for", "on", "at", "of", "to", "a", "an", "the", "was", "were", "is", "cost", "costs", "costed", "each", "total", "in", "and", "about", "around", "approximately", "roughly", "rs", "rupees", "dollars", "bucks", "euros", "pounds", "only", "today", "yesterday", "tonight", "from", "with", "me", "us", "it", "please", "okay", "ok", "then", "worth", "per", "spent", "paid", "bought", "got", "this", "morning", "evening", "afternoon", "night", "last", "there", "here", "just", "so", "um", "uh", "like", "that", "received", "credited", "earned"];
   var LEAD_SET = {}, TRAIL_SET = {};
   LEAD_FILLER.forEach(function (w) { LEAD_SET[w] = 1; });
   TRAIL_FILLER.forEach(function (w) { TRAIL_SET[w] = 1; });
@@ -309,6 +334,46 @@
   }
 
   // ---------- main ----------
+  var ASIDE_RE = /\b(?:set|keep|put|setting|keeping|putting)\s+aside\b|\bsav(?:e|ing)\b/;
+  var SPEND_VERBS = { spent: 1, spend: 1, paid: 1, pay: 1, payed: 1, cost: 1, costs: 1, costed: 1, was: 1, is: 1, "for": 1, of: 1, worth: 1, charged: 1, gave: 1, sent: 1, transferred: 1, owe: 1, owed: 1, "=": 1, around: 1, about: 1 };
+  var POST_PREP = { on: 1, "for": 1, at: 1, to: 1, towards: 1, "in": 1 };
+  var EVENT_STOP = { the: 1, a: 1, an: 1, of: 1, "for": 1, and: 1, my: 1, our: 1, with: 1, to: 1, "in": 1, on: 1, at: 1 };
+
+  /**
+   * Find which event (by name) a sentence refers to: "cab 85 for the goa trip".
+   * events: [{id, name}]. Returns { id, text } with the mention removed, or null.
+   */
+  function matchEvent(text, events) {
+    if (!events || !events.length) return null;
+    var words = text.split(/\s+/);
+    var lower = words.map(function (w) { return w.toLowerCase().replace(/[^a-z0-9]/g, ""); });
+    var best = null;
+    events.forEach(function (ev, idx) {
+      var nameWords = normalizeKey(ev.name).split(" ").filter(function (w) { return w && !EVENT_STOP[w]; });
+      if (!nameWords.length) return;
+      var hits = [];
+      nameWords.forEach(function (nw) {
+        var i = lower.indexOf(nw);
+        if (i >= 0 && hits.indexOf(i) < 0) hits.push(i);
+      });
+      if (!hits.length) return;
+      var score = hits.length + (hits.length === nameWords.length ? 2 : 0);
+      if (!best || score > best.score || (score === best.score && idx < best.idx)) best = { id: ev.id, score: score, hits: hits, idx: idx };
+    });
+    if (!best) return null;
+    // also drop "for the"/"on the" right before the first matched word
+    var drop = {};
+    best.hits.forEach(function (i) { drop[i] = 1; });
+    var first = Math.min.apply(null, best.hits);
+    var j = first - 1;
+    if (j >= 0 && (lower[j] === "the" || lower[j] === "my" || lower[j] === "our")) { drop[j] = 1; j--; }
+    if (j >= 0 && (POST_PREP[lower[j]] || lower[j] === "during" || lower[j] === "from" || lower[j] === "of")) { drop[j] = 1; }
+    var kept = words.filter(function (w, i) { return !drop[i]; });
+    return { id: best.id, text: kept.join(" ").replace(/\s+/g, " ").trim() };
+  }
+
+  var INCOME_RE = /\b(salary|salaries|received|got paid|paid me|income|credited|refund|refunded|cashback|cash back|bonus|cash (?:on|in) hand|opening balance|starting balance|brought forward|earned|reimbursed|reimbursement|stipend|dividend|interest received|sold|won)\b/;
+
   function preclean(raw) {
     return String(raw || "")
       .toLowerCase()
@@ -321,21 +386,37 @@
       .trim();
   }
 
-  function parseOne(raw) {
+  function parseOne(raw, events) {
     var text = wordsToDigits(preclean(raw));
+    var kind = ASIDE_RE.test(text) ? "aside" : (INCOME_RE.test(text) || /(^|\s)\+\s*\d/.test(text)) ? "income" : "expense";
+    text = text.replace(/\+\s*(?=\d)/g, " ");
+    if (kind === "aside") text = text.replace(ASIDE_RE, " ");
+    var eventId = null;
+    var ev = matchEvent(text, events);
+    if (ev) { eventId = ev.id; text = ev.text; }
     var dayOffset = 0, working = text;
     for (var d = 0; d < DATE_HINTS.length; d++) {
       if (DATE_HINTS[d][0].test(working)) { dayOffset = DATE_HINTS[d][1]; working = working.replace(DATE_HINTS[d][0], " "); break; }
     }
     var amt = mergeSubunits(working, findAmount(working));
-    var itemText = amt ? (working.slice(0, amt.start) + " " + working.slice(amt.end)) : working;
+    var itemText = working;
+    if (amt) {
+      var s = amt.start, e = amt.end;
+      if (SPEND_VERBS[amt.beforeWord]) s = amt.beforeStart;
+      if (POST_PREP[amt.afterWord]) e = amt.afterEnd;
+      itemText = working.slice(0, s) + " " + working.slice(e);
+    }
     var item = cleanItem(itemText);
+    if (kind === "aside") item = item ? "Set aside · " + item : "Set aside";
+    if (kind === "income" && !item && amt) item = "Received";
     return {
       raw: String(raw || "").trim(),
       item: item,
       amount: amt ? Math.round(amt.value * 100) / 100 : null,
       currency: amt ? amt.currency : null,
       dayOffset: dayOffset,
+      kind: kind,
+      eventId: eventId,
       category: null // filled by parse() so learned mappings apply
     };
   }
@@ -344,7 +425,7 @@
    * parse(text, learned?) -> { entries: [...] }
    * Splits "coffee 5 and sandwich 8" into two entries when every part has an amount.
    */
-  function parse(raw, learned) {
+  function parse(raw, learned, events) {
     var text = wordsToDigits(preclean(raw));
     // protect commas inside numbers ("1,200") from the list split
     var guarded = text.replace(/(\d),(\d)/g, "$1\u0001$2");
@@ -353,24 +434,30 @@
       .filter(function (p) { return p.trim(); });
     var entries;
     if (parts.length >= 2 && parts.every(function (p) { return findAmount(p) !== null; })) {
-      entries = parts.map(parseOne);
+      entries = parts.map(function (p) { return parseOne(p, events); });
       // "4 dollars and 50 cents" style false split: both parts parsed but second is subunits
-      if (entries.length === 2 && /^\s*\d{1,2}\s*(cents?|paise|paisa|pence|p)\b/.test(parts[1])) entries = [parseOne(text)];
+      if (entries.length === 2 && /^\s*\d{1,2}\s*(cents?|paise|paisa|pence|p)\b/.test(parts[1])) entries = [parseOne(text, events)];
+      // one event mention covers every part of the sentence
+      var shared = null;
+      entries.forEach(function (e) { if (e.eventId) shared = e.eventId; });
+      if (shared) entries.forEach(function (e) { if (!e.eventId) e.eventId = shared; });
     } else {
-      entries = [parseOne(text)];
+      entries = [parseOne(text, events)];
     }
-    entries.forEach(function (e) { e.category = categorize(e.item || e.raw, learned); });
+    entries.forEach(function (e) { e.category = e.kind === "income" ? "income" : e.kind === "aside" ? "aside" : categorize((e.item || "") + " " + e.raw, learned); });
     return { entries: entries, normalized: text };
   }
 
   return {
     parse: parse,
     parseOne: parseOne,
+    matchEvent: matchEvent,
     wordsToDigits: wordsToDigits,
     categorize: categorize,
     normalizeKey: normalizeKey,
     CATEGORIES: CATEGORIES,
     CATEGORY_BY_ID: CATEGORY_BY_ID,
+    LEGACY_CATEGORY: LEGACY_CATEGORY,
     CURRENCY_WORDS: CURRENCY_WORDS
   };
 });
