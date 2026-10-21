@@ -275,3 +275,5 @@ mark { background: var(--lime); color: var(--ink); border-radius: 3px; padding: 
 .svc[disabled] { cursor: default; opacity: .7; }
 .svc:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
 .chip .ico { width: 14px; height: 14px; vertical-align: -2px; }
+details.fold > summary .row { gap: 8px; }
+details.fold > summary .ico { color: var(--violet); }

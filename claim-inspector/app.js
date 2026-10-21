@@ -24,13 +24,32 @@
     get(k, d) { try { const v = localStorage.getItem('ci.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('ci.' + k, JSON.stringify(v)); } catch (e) { /* ignore */ } }
   };
-  const PROF = () => Object.assign(CI.blankProfile(), store.get('profile', {}));
-  const hasProfile = () => !!store.get('profile', null);
-  const saveProfile = (p) => { store.set('profile', p); renderWho(); };
+  /* Providers: list + active id. Migrates the old single 'profile'. */
+  const uid = () => Math.random().toString(36).slice(2, 8);
+  const initials = (n) => String(n || '').replace(/^(dr\.?)\s+/i, '').split(/\s+/).map((w) => w[0] || '').join('').toUpperCase().slice(0, 3);
+  function providers() {
+    let list = store.get('providers', null);
+    if (!list) { const old = store.get('profile', null); list = old ? [Object.assign(old, { id: uid(), code: old.code || initials(old.name) || 'P1' })] : []; if (old) store.set('providers', list); }
+    return list;
+  }
+  const hasProfile = () => providers().length > 0;
+  const PROF = (id) => { const l = providers(); const p = l.find((x) => x.id === (id || store.get('activeProvider', ''))) || l[0]; return Object.assign(CI.blankProfile(), { id: '', code: '' }, p || {}); };
+  const PROF_BY_CODE = (code) => { const c = String(code || '').toUpperCase(); const p = providers().find((x) => String(x.code || '').toUpperCase() === c || String(x.npi || '') === c); return p ? PROF(p.id) : null; };
+  const saveProfile = (p) => { const l = providers(); const i = l.findIndex((x) => x.id === p.id); if (i >= 0) l[i] = p; else l.push(p); store.set('providers', l); store.set('activeProvider', p.id); renderWho(); };
+  const PRACTICE = () => Object.assign({ name: '', address1: '', city: '', state: '', zip: '', phone: '', taxId: '', groupNpi: '', submitterId: '', receiverId: '', receiverName: '', contact: '', payerIds: {} }, store.get('practice', {}));
+  const PROVIDER_FOR = (claim) => (claim.providerId && PROF(claim.providerId)) || (hasProfile() ? PROF() : null);
   function renderWho() {
     const el = document.getElementById('who'); if (!el) return;
     const p = PROF(); el.innerHTML = '';
-    el.appendChild(h('a', { class: 'btn ghost sm who', href: '#/setup', title: 'Provider setup' }, ico('user'), hasProfile() ? (p.name || 'Provider') + (p.npi ? ' · ' + p.npi : '') : 'Set up provider'));
+    el.appendChild(h('a', { class: 'btn ghost sm who', href: '#/setup', title: 'Provider setup' }, ico('user'), hasProfile() ? (p.name || 'Provider') + (providers().length > 1 ? ' +' + (providers().length - 1) : '') : 'Set up provider'));
+  }
+  function download(name, text) { const blob = new Blob([text], { type: 'text/plain' }); const a = h('a', { href: URL.createObjectURL(blob), download: name }); document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+  function printForm(items) {
+    const prac = PRACTICE();
+    const w = window.open('', '_blank');
+    if (!w) { toast('Allow pop-ups to print'); return; }
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>CMS-1500</title><style>body{margin:0;padding:16px;background:#eee}.cms{margin-bottom:24px;page-break-after:always}' + CI.CMS_CSS.replace(/body \*\{visibility:hidden\}\.cms,\.cms \*\{visibility:visible\}\.cms\{position:absolute;left:0;top:0;width:100%;border-color:#c33\}/, '.cms{page-break-after:always}') + '</style></head><body>' + items.map((it) => CI.forms.cms1500(it.claim, it.patient, it.provider, prac)).join('') + '<script>setTimeout(function(){window.print()},300)<\/script></body></html>');
+    w.document.close();
   }
   function toast(msg) { const t = h('div', { class: 'toast', role: 'status' }, msg); document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
   function copy(text) { (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Copied'), () => toast('Copy not available')); }
@@ -78,7 +97,7 @@
   const ROUTES = [
     ['', 'Home', home, 'home'], ['inspect', 'Inspect', inspectPage, 'inspect'], ['batch', 'Batch', batchPage, 'batch'], ['match', 'Match', matchPage, 'match'], ['em', 'E/M level', emPage, 'em'],
     ['modifiers', 'Modifiers', modPage, 'mod'], ['capture', 'Capture', capturePage, 'capture'], ['preventive', 'Preventive', prevPage, 'prev'],
-    ['programs', 'Programs', programsPage, 'programs'], ['denials', 'Denials', denialsPage, 'denials'], ['codes', 'Codes', codesPage, 'codes'], ['reference', 'Reference', refPage, 'ref'], ['setup', 'Setup', setupPage, 'setup']
+    ['programs', 'Programs', programsPage, 'programs'], ['denials', 'Denials', denialsPage, 'denials'], ['codes', 'Codes', codesPage, 'codes'], ['reference', 'Reference', refPage, 'ref'], ['setup', 'Setup', setupPage, 'setup'], ['submit', 'Submit', submitPage, 'denials']
   ];
   function route() {
     const hash = location.hash.replace(/^#\/?/, '');
@@ -130,7 +149,8 @@
         tool('', '06 · Capture', 'Missed-charge finder', 'Tick what happened in the room. See every billable code you might be leaving behind.', '#/capture'),
         tool('', '07 · Prevent', 'Preventive schedules', 'Pediatric through 65+: what to do, the code and the dx.', '#/preventive'),
         tool('wide', '08 · Programs', 'CCM, TCM, RPM, AWV, APCM, ACP, BHI', 'Eligibility, time rules, documentation checklists and the traps that cause clawbacks.', '#/programs'),
-        tool('', '09 · Recover', 'Denials & appeals', '50+ CARC/RARC with the fix. Generates an appeal letter.', '#/denials'))));
+        tool('', '09 · Recover', 'Denials & appeals', '50+ CARC/RARC with the fix. Generates an appeal letter.', '#/denials'),
+        tool('', '10 · Submit', 'Claim forms & files', 'Printable CMS-1500, 837P upload file and CSV from the claims you inspected.', '#/submit'))));
 
     // Cycle
     root.appendChild(h('section', { class: 'block' },
@@ -140,7 +160,7 @@
       h('div', { class: 'cycle' }, CI.RCM.map((s) => cycleStep(s, done)))));
     return root;
   }
-  const TOOL_ICON = { '#/inspect': 'inspect', '#/batch': 'batch', '#/match': 'match', '#/em': 'em', '#/modifiers': 'mod', '#/capture': 'capture', '#/preventive': 'prev', '#/programs': 'programs', '#/denials': 'denials' };
+  const TOOL_ICON = { '#/submit': 'ref', '#/inspect': 'inspect', '#/batch': 'batch', '#/match': 'match', '#/em': 'em', '#/modifiers': 'mod', '#/capture': 'capture', '#/preventive': 'prev', '#/programs': 'programs', '#/denials': 'denials' };
   function tool(cls, kicker, title, text, href) { return h('a', { class: 'tool ' + cls, href }, h('div', { class: 'row between' }, ico(TOOL_ICON[href], 'big'), h('span', { class: 'mono' }, kicker)), h('h3', { class: 'h3' }, title), h('p', null, text), h('span', { class: 'go' }, ico('arrow'))); }
   function cycleStep(s, done) {
     const total = s.tasks.length;
@@ -169,10 +189,10 @@
   ];
   function sampleClaim(s) {
     const c = s.c;
-    return { age: c.age, sex: c.sex, payer: c.payer, status: c.status, pos: c.pos, taxonomy: hasProfile() ? PROF().taxonomy : (c.taxonomy || '207Q00000X'), dos: today(), dx: c.dx.slice(), lines: c.lines.map((l) => ({ cpt: l[0], mods: l[1], ptr: l[2], units: l[3] || 1, charge: '' })) };
+    return { providerId: hasProfile() ? PROF().id : '', patient: CI.forms.blankPatient(), age: c.age, sex: c.sex, payer: c.payer, status: c.status, pos: c.pos, taxonomy: hasProfile() ? PROF().taxonomy : (c.taxonomy || '207Q00000X'), dos: today(), dx: c.dx.slice(), lines: c.lines.map((l) => ({ cpt: l[0], mods: l[1], ptr: l[2], units: l[3] || 1, charge: '' })) };
   }
-  function blankClaim() { const p = PROF(); return { age: '', sex: '', payer: (p.payers && p.payers[0]) || 'commercial', status: 'est', pos: p.pos || '11', taxonomy: p.taxonomy || '207Q00000X', dos: today(), dx: ['', ''], lines: [{ cpt: '', mods: '', ptr: 'A', units: 1, charge: '' }] }; }
-  const toEngine = (c) => Object.assign({}, c, { profile: hasProfile() ? PROF() : null, lines: c.lines.map((l) => ({ cpt: l.cpt, mods: String(l.mods || '').split(/[\s,]+/).filter(Boolean), ptr: l.ptr, units: l.units, charge: l.charge })) });
+  function blankClaim() { const p = PROF(); return { providerId: p.id, patient: CI.forms.blankPatient(), age: '', sex: '', payer: (p.payers && p.payers[0]) || 'commercial', status: 'est', pos: p.pos || '11', taxonomy: p.taxonomy || '207Q00000X', dos: today(), dx: ['', ''], lines: [{ cpt: '', mods: '', ptr: 'A', units: 1, charge: '' }] }; }
+  const toEngine = (c) => Object.assign({}, c, { profile: PROVIDER_FOR(c), lines: c.lines.map((l) => ({ cpt: l.cpt, mods: String(l.mods || '').split(/[\s,]+/).filter(Boolean), ptr: l.ptr, units: l.units, charge: l.charge })) });
   const fromEngine = (c) => Object.assign({}, c, { lines: c.lines.map((l) => ({ cpt: l.cpt, mods: (l.mods || []).join(' '), ptr: l.ptr, units: l.units, charge: l.charge })) });
 
   function inspectPage() {
@@ -212,6 +232,29 @@
       const head = 'CLAIM INSPECTOR REPORT - ' + c.dos + ' · ' + c.payer + ' · age ' + c.age + ' ' + c.sex + ' · POS ' + c.pos + ' · taxonomy ' + c.taxonomy + '\nDX: ' + c.dx.filter(Boolean).map((d, i) => 'ABCDEFGHIJKL'[i] + '=' + fmtDx(d)).join('  ') + '\nLINES: ' + c.lines.filter((l) => l.cpt).map((l) => l.cpt + (l.mods ? '-' + l.mods.trim().replace(/[\s,]+/g, '-') : '') + ' [' + l.ptr + '] x' + l.units).join(' | ');
       return head + '\nScore ' + last.score + ' · ' + last.errs + ' errors · ' + last.warns + ' warnings\n\n' + last.issues.map((i) => '[' + i.sev.toUpperCase() + '] ' + i.rule + ' ' + i.msg).join('\n');
     }
+    function claimFormCard() {
+      claim.patient = claim.patient || CI.forms.blankPatient();
+      const pt = claim.patient, pv = PROVIDER_FOR(claim) || {}, prac = PRACTICE();
+      const gaps = CI.forms.formGaps(toEngine(claim), pt, pv, prac);
+      const f = (label, key, props) => field(label, inp(pt[key], (v) => { pt[key] = v; save(); refreshGaps(); }, props));
+      const gapBox = h('div', { class: 'row', style: 'gap:6px' });
+      function refreshGaps() { const g = CI.forms.formGaps(toEngine(claim), pt, PROVIDER_FOR(claim) || {}, PRACTICE()); gapBox.innerHTML = ''; gapBox.appendChild(g.length ? h('span', { class: 'pill amber' }, g.length + ' missing: ' + g.slice(0, 4).join(', ') + (g.length > 4 ? '…' : '')) : h('span', { class: 'pill lime' }, 'form complete')); }
+      const body = h('div', { class: 'inner stack' },
+        h('p', { class: 'xs muted', style: 'margin:0' }, 'Needed only to print a CMS-1500 or build an upload file. Saved in this browser with the claim; clear it when done.'),
+        h('div', { class: 'fields' }, f('Patient name (Last, First)', 'name', { placeholder: 'Doe, Jane' }), f('Date of birth', 'dob', { type: 'date' }), f('Account #', 'account', { class: 'in mono-in' }), f('Phone', 'phone')),
+        h('div', { class: 'fields' }, f('Street address', 'address'), f('City', 'city'), f('State', 'state', { maxlength: 2, class: 'in mono-in' }), f('ZIP', 'zip', { class: 'in mono-in' })),
+        h('div', { class: 'fields' }, f('Payer name', 'payerName', { placeholder: 'as on card' }), f('Payer ID', 'payerId', { class: 'in mono-in', placeholder: prac.payerIds[claim.payer] || 'from Setup' }), f('Member ID', 'memberId', { class: 'in mono-in' }), f('Group #', 'groupNo', { class: 'in mono-in' })),
+        h('div', { class: 'fields' }, field('Relationship to insured', sel([['self', 'Self'], ['spouse', 'Spouse'], ['child', 'Child'], ['other', 'Other']], pt.relationship, (v) => { pt.relationship = v; save(); })), f('Insured name (if not self)', 'insuredName'), f('Prior auth #', 'auth', { class: 'in mono-in' }), f('Onset date (box 14)', 'onset', { type: 'date' })),
+        h('div', { class: 'fields' }, f('Referring provider', 'referring'), f('Referring NPI', 'referringNpi', { class: 'in mono-in' }), field('Resubmission', sel([['', 'Original'], ['7', '7 · Replacement'], ['8', '8 · Void']], pt.resub, (v) => { pt.resub = v; save(); })), f('Original claim #', 'origRef', { class: 'in mono-in' })),
+        h('div', { class: 'row' },
+          h('button', { class: 'btn primary', onclick: () => printForm([{ claim: toEngine(claim), patient: pt, provider: pv }]) }, ico('ref'), 'Print CMS-1500'),
+          h('button', { class: 'btn ghost', onclick: () => download('claim-' + (pt.account || 'single') + '.837', CI.forms.x837([{ claim: toEngine(claim), patient: pt, provider: pv }], PRACTICE())) }, 'Download 837P'),
+          h('button', { class: 'btn ghost', onclick: () => download('claim-' + (pt.account || 'single') + '.csv', CI.forms.csv([{ claim: toEngine(claim), patient: pt, provider: pv }])) }, 'CSV'),
+          h('button', { class: 'btn lime', onclick: () => { const q = store.get('queue', []); q.push({ id: uid(), added: today(), claim: JSON.parse(JSON.stringify(claim)) }); store.set('queue', q); toast('Added to submission file (' + q.length + ')'); } }, ico('batch'), 'Add to submission file')));
+      const d = h('details', { class: 'fold', open: gaps.length === 0 ? null : null }, h('summary', null, h('span', { class: 'row' }, ico('ref'), 'Claim form · patient & insurance'), gapBox), body);
+      refreshGaps();
+      return h('div', { class: 'card' }, d);
+    }
     function renderForm() {
       formHost.innerHTML = '';
       const upd = (k) => (v) => { claim[k] = v; run(); };
@@ -225,7 +268,8 @@
           field('Patient status', sel([['est', 'Established'], ['new', 'New (3+ yrs)'], ['', 'Unknown']], claim.status, upd('status'))),
           field('Date of service', inp(claim.dos, upd('dos'), { type: 'date' })),
           field('Place of service', sel(CI.POS.map((p) => [p[0], p[0] + ' · ' + p[1]]), claim.pos, upd('pos')))),
-        h('div', { style: 'margin-top:12px' }, field('Rendering provider taxonomy', sel([['', 'Not specified']].concat(Object.keys(CI.TAX).map((k) => [k, k + ' · ' + CI.TAX[k].name])), claim.taxonomy, upd('taxonomy'))))));
+        h('div', { class: 'fields', style: 'margin-top:12px' }, hasProfile() ? field('Rendering provider', sel(providers().map((p) => [p.id, (p.code ? '@' + p.code + ' · ' : '') + (p.name || 'Provider') + (p.npi ? ' · ' + p.npi : '')]), claim.providerId || PROF().id, (v) => { claim.providerId = v; claim.taxonomy = PROF(v).taxonomy; renderForm(); run(); })) : null, field('Rendering provider taxonomy', sel([['', 'Not specified']].concat(Object.keys(CI.TAX).map((k) => [k, k + ' · ' + CI.TAX[k].name])), claim.taxonomy, upd('taxonomy'))))));
+      formHost.appendChild(claimFormCard());
 
       // diagnoses
       const dxBox = h('div', { class: 'card' }, h('div', { class: 'row between', style: 'margin-bottom:16px' }, h('h3', { class: 'h3' }, 'Diagnoses ', h('span', { class: 'mono inline' }, '(box 21 · A-L)')),
@@ -306,7 +350,7 @@
     const SAFE = ['addMod', 'removeMod', 'units', 'ptr', 'toEst', 'toNew', 'swapAdmin'];
     function analyze() {
       st.text = ta.value; store.set('batch', st);
-      results = E.parseBatch(ta.value).map((p) => { if (p.error) return p; if (hasProfile()) { p.claim.taxonomy = PROF().taxonomy; p.claim.profile = PROF(); } return Object.assign(p, { res: E.inspect(p.claim) }); });
+      results = E.parseBatch(ta.value).map((p) => { if (p.error) return p; const m = /@([A-Za-z0-9]+)/.exec(p.label); const pv = (m && PROF_BY_CODE(m[1])) || (hasProfile() ? PROF() : null); if (m && !PROF_BY_CODE(m[1])) p.unknownProvider = m[1]; if (pv) { p.claim.taxonomy = pv.taxonomy; p.claim.profile = pv; p.claim.providerId = pv.id; } return Object.assign(p, { res: E.inspect(p.claim) }); });
       render();
     }
     function fixAll() {
@@ -358,6 +402,7 @@
       const card = h('div', { class: 'card', style: 'padding:0;overflow:hidden' });
       shown.forEach((p) => {
         if (!p.res) { card.appendChild(h('div', { class: 'issue', style: 'padding:16px 24px' }, h('span', { class: 'dot error' }), h('div', null, h('b', null, p.label), h('p', { class: 'small' }, p.error)))); return; }
+        if (p.unknownProvider) p.res.issues.unshift({ sev: 'warn', rule: 'PRO-007', msg: 'No provider with code @' + p.unknownProvider + ' in Setup; checked against the active provider instead.' });
         const r = p.res, top = r.issues.find((i) => i.sev === 'error') || r.issues.find((i) => i.sev === 'warn') || r.issues[0];
         const open = !!openIx[p.label];
         const row = h('div', { style: 'border-top:1px solid var(--border)' });
@@ -389,18 +434,76 @@
           ta)),
         h('div', { class: 'c4' }, h('div', { class: 'card flat' }, h('div', { class: 'mono' }, 'Line format'),
           h('p', { class: 'code', style: 'font-size:12px;margin:8px 0;word-break:break-word' }, 'label | 52 M | commercial | est | 11 | Z00.01 I10 Z23 | 99396 A, 99214-25 B, 90471 C x1'),
-          h('ul', { class: 'plain dash' }, ['Fields: label, age + sex, payer (commercial / medicare / medicaid), new or est, POS, diagnoses, services', 'Service: CPT, optional -modifiers, dx pointers (letters = order of the diagnoses), xUnits', 'Short forms work: label | dx | services', 'Use account numbers or initials - never patient names'].map((x) => h('li', null, x)))))),
+          h('ul', { class: 'plain dash' }, ['Fields: label (add @CODE to pick a provider, e.g. A-1001 @RM), age + sex, payer (commercial / medicare / medicaid), new or est, POS, diagnoses, services', 'Service: CPT, optional -modifiers, dx pointers (letters = order of the diagnoses), xUnits', 'Short forms work: label | dx | services', 'Use account numbers or initials - never patient names'].map((x) => h('li', null, x)))))),
       h('div', { style: 'margin-top:32px' }, summary, list));
     analyze();
     return root;
   }
 
 
+
+  /* ---------- Submission file (queue) ---------- */
+  function submitPage() {
+    const host = h('div', null);
+    function render() {
+      host.innerHTML = '';
+      const q = store.get('queue', []);
+      const items = q.map((x) => ({ q: x, claim: toEngine(x.claim), patient: x.claim.patient || {}, provider: PROVIDER_FOR(x.claim) || {}, res: E.inspect(toEngine(x.claim)) }));
+      items.forEach((it) => { it.gaps = CI.forms.formGaps(it.claim, it.patient, it.provider, PRACTICE()); it.ready = it.res.errs === 0 && it.gaps.length === 0; });
+      const ready = items.filter((i) => i.ready), tot = items.reduce((s, i) => s + CI.forms.total(i.claim), 0);
+      host.appendChild(h('div', { class: 'card dark' }, h('div', { class: 'row between', style: 'align-items:flex-end' },
+        h('div', { class: 'row', style: 'gap:40px;align-items:flex-end' },
+          h('div', null, h('div', { class: 'score good' }, String(items.length)), h('div', { class: 'mono' }, 'claims in file')),
+          h('div', null, h('div', { class: 'score', style: 'font-size:48px;color:' + (ready.length === items.length ? 'var(--lime)' : '#E5A93C') }, String(ready.length)), h('div', { class: 'mono' }, 'ready to send')),
+          h('div', null, h('div', { class: 'score', style: 'font-size:48px;color:#fff' }, money(tot)), h('div', { class: 'mono' }, 'total charges'))),
+        h('div', { class: 'row' },
+          h('button', { class: 'btn lime', disabled: !ready.length, onclick: () => download('claims-' + today() + '.837', CI.forms.x837(ready, PRACTICE())) }, ico('batch'), 'Download 837P (' + ready.length + ')'),
+          h('button', { class: 'btn ghost', style: 'color:#fff;border-color:#2B3445', disabled: !ready.length, onclick: () => download('claims-' + today() + '.csv', CI.forms.csv(ready)) }, 'CSV'),
+          h('button', { class: 'btn ghost', style: 'color:#fff;border-color:#2B3445', disabled: !items.length, onclick: () => printForm(items) }, 'Print all CMS-1500'),
+          h('button', { class: 'btn ghost', style: 'color:#fff;border-color:#2B3445', disabled: !items.length, onclick: () => { if (confirm('Clear the submission file? (Download first.)')) { store.set('queue', []); render(); } } }, 'Clear')))));
+      const list = h('div', { class: 'card', style: 'padding:0;overflow:hidden;margin-top:24px' });
+      if (!items.length) list.appendChild(h('p', { class: 'small muted', style: 'padding:24px' }, 'Empty. On the Inspector, open “Claim form”, fill the patient block and press “Add to submission file”.'));
+      items.forEach((it) => list.appendChild(h('div', { style: 'display:grid;grid-template-columns:24px 1fr auto;gap:16px;align-items:center;padding:16px 24px;border-top:1px solid var(--border)' },
+        ico(it.ready ? 'ok' : it.res.errs ? 'error' : 'warn', 'sev ' + (it.ready ? 'ok' : it.res.errs ? 'error' : 'warn')),
+        h('div', null, h('b', null, it.patient.name || 'Unnamed patient'), h('span', { class: 'mono inline muted' }, '  ' + (it.patient.account || '') + ' · ' + it.claim.dos + ' · ' + it.claim.payer + ' · ' + (it.provider.name || 'no provider')),
+          h('div', { class: 'small muted' }, it.claim.lines.map((l) => l.cpt + (l.mods.length ? '-' + l.mods.join('-') : '')).join('  ') + ' · ' + money(CI.forms.total(it.claim))),
+          !it.ready && h('div', { class: 'row', style: 'gap:6px;margin-top:6px' }, it.res.errs ? h('span', { class: 'pill red' }, it.res.errs + ' rule errors') : null, it.gaps.length ? h('span', { class: 'pill amber' }, 'missing: ' + it.gaps.join(', ')) : null)),
+        h('div', { class: 'row' }, h('button', { class: 'btn ghost sm', onclick: () => printForm([it]) }, 'CMS-1500'), h('button', { class: 'btn ghost sm', onclick: () => { store.set('claim', it.q.claim); location.hash = '#/inspect'; } }, 'Edit'), h('button', { class: 'x', 'aria-label': 'Remove', onclick: () => { store.set('queue', store.get('queue', []).filter((x) => x.id !== it.q.id)); render(); } }, '×')))));
+      host.appendChild(list);
+      const prac = PRACTICE();
+      if (!prac.groupNpi || !prac.taxId || !prac.submitterId) host.appendChild(h('a', { class: 'banner', href: '#/setup', style: 'margin-top:24px' }, ico('setup'), h('span', null, h('b', null, 'Practice details incomplete. '), 'Billing NPI, tax ID and clearinghouse submitter/receiver IDs go in Setup → Practice; the 837P needs them.'), ico('arrow')));
+    }
+    render();
+    return h('div', null, pageHead('Submit', 'Build the file, print the forms.', 'Claims you added from the Inspector. The 837P is the standard electronic format clearinghouses accept; the CMS-1500 print is a review facsimile - paper claims must go on the official red-ink form.'), host);
+  }
+
   /* ---------- Provider setup ---------- */
   function setupPage() {
     let p = PROF();
     const form = h('div', { class: 'stack-lg' });
     const side = h('div', { class: 'sticky stack-lg' });
+    const provBar = h('div', null);
+    function renderProvBar() {
+      provBar.innerHTML = '';
+      const list = providers();
+      provBar.appendChild(h('div', { class: 'card flat' }, h('div', { class: 'row between' }, h('div', { class: 'row' }, ico('user', 'big'), h('h3', { class: 'h3' }, 'Providers'), h('span', { class: 'pill violet' }, list.length)),
+        h('div', { class: 'row' }, h('button', { class: 'btn primary sm', onclick: () => { const n = Object.assign(CI.blankProfile(), { id: uid(), code: 'P' + (list.length + 1), name: '' }); saveProfile(n); p = PROF(n.id); renderProvBar(); renderForm(); renderSide(); } }, '+ Add provider'),
+          list.length > 1 ? h('button', { class: 'btn danger sm', onclick: () => { if (confirm('Remove ' + (p.name || 'this provider') + '?')) { store.set('providers', list.filter((x) => x.id !== p.id)); store.set('activeProvider', providers()[0].id); p = PROF(); renderWho(); renderProvBar(); renderForm(); renderSide(); } } }, 'Remove') : null)),
+        h('div', { class: 'chips', style: 'margin-top:12px' }, list.map((x) => h('button', { class: 'chip', 'aria-pressed': String(x.id === p.id), onclick: () => { store.set('activeProvider', x.id); p = PROF(x.id); renderWho(); renderProvBar(); renderForm(); renderSide(); } }, '@' + (x.code || '?') + ' ' + (x.name || 'Unnamed')))),
+        h('p', { class: 'xs muted', style: 'margin:12px 0 0' }, 'The selected provider is the default for new claims. In Batch, put @CODE in the label to route a line to a provider.')));
+    }
+    const pr = PRACTICE();
+    const practiceCard = (() => {
+      const s = (k) => (v) => { pr[k] = v; store.set('practice', pr); };
+      const pid = (k) => (v) => { pr.payerIds[k] = v; store.set('practice', pr); };
+      return h('div', { class: 'card' }, h('div', { class: 'row', style: 'margin-bottom:16px' }, ico('home', 'big'), h('h3', { class: 'h3' }, 'Practice (billing provider · box 33)')),
+        h('div', { class: 'fields' }, field('Practice name', inp(pr.name, s('name'))), field('Billing NPI (type 2)', inp(pr.groupNpi, s('groupNpi'), { class: 'in mono-in' })), field('Tax ID (EIN)', inp(pr.taxId, s('taxId'), { class: 'in mono-in' })), field('Phone', inp(pr.phone, s('phone')))),
+        h('div', { class: 'fields', style: 'margin-top:12px' }, field('Street', inp(pr.address1, s('address1'))), field('City', inp(pr.city, s('city'))), field('State', inp(pr.state, s('state'), { maxlength: 2, class: 'in mono-in' })), field('ZIP', inp(pr.zip, s('zip'), { class: 'in mono-in' }))),
+        h('div', { class: 'mono', style: 'margin:16px 0 8px' }, 'Clearinghouse (837P envelope)'),
+        h('div', { class: 'fields' }, field('Submitter ID', inp(pr.submitterId, s('submitterId'), { class: 'in mono-in', placeholder: 'from clearinghouse' })), field('Receiver ID', inp(pr.receiverId, s('receiverId'), { class: 'in mono-in' })), field('Receiver name', inp(pr.receiverName, s('receiverName'))), field('Billing contact', inp(pr.contact, s('contact')))),
+        h('div', { class: 'mono', style: 'margin:16px 0 8px' }, 'Default payer IDs'),
+        h('div', { class: 'fields' }, field('Medicare', inp(pr.payerIds.medicare, pid('medicare'), { class: 'in mono-in', placeholder: 'MAC payer ID' })), field('Medicaid', inp(pr.payerIds.medicaid, pid('medicaid'), { class: 'in mono-in' })), field('Commercial', inp(pr.payerIds.commercial, pid('commercial'), { class: 'in mono-in', placeholder: 'override per claim' })), field('TRICARE', inp(pr.payerIds.tricare, pid('tricare'), { class: 'in mono-in' }))));
+    })();
     const set = (k) => (v) => { p[k] = v; saveProfile(p); renderSide(); };
     function chipEditor(key, placeholder, lookup) {
       const box = h('div', { class: 'chips' });
@@ -419,6 +522,7 @@
       form.appendChild(h('div', { class: 'card' }, h('div', { class: 'row', style: 'margin-bottom:16px' }, ico('user', 'big'), h('h3', { class: 'h3' }, 'Who is billing')),
         h('div', { class: 'fields' },
           field('Provider name', inp(p.name, set('name'), { placeholder: 'Dr. A. Patel' })),
+          field('Short code (@)', inp(p.code, (v, el) => { p.code = v.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 4); el.value = p.code; saveProfile(p); renderProvBar(); }, { class: 'in mono-in', placeholder: 'RM' })),
           field('Credential', sel(['MD', 'DO', 'NP', 'PA', 'CNM', 'Other'], p.credential, set('credential'))),
           field('Rendering NPI (type 1)', npiIn),
           field('Group / billing NPI (type 2)', inp(p.groupNpi, (v, el) => { p.groupNpi = v.replace(/\D/g, '').slice(0, 10); el.value = p.groupNpi; saveProfile(p); renderSide(); }, { class: 'in mono-in', placeholder: 'optional' }))),
@@ -452,15 +556,16 @@
         [(p.favCpt || []).length ? 'ok' : 'info', (p.favCpt || []).length + ' go-to codes']
       ];
       const ex = () => { const blob = new Blob([JSON.stringify(p, null, 2)], { type: 'application/json' }); const a = h('a', { href: URL.createObjectURL(blob), download: 'claim-inspector-profile.json' }); document.body.appendChild(a); a.click(); a.remove(); };
-      const file = h('input', { type: 'file', accept: '.json', style: 'display:none', onchange: (e) => { const f = e.target.files[0]; if (!f) return; f.text().then((t) => { try { p = Object.assign(CI.blankProfile(), JSON.parse(t)); saveProfile(p); renderForm(); renderSide(); toast('Profile imported'); } catch (err) { toast('Not a valid profile file'); } }); } });
+      const file = h('input', { type: 'file', accept: '.json', style: 'display:none', onchange: (e) => { const f = e.target.files[0]; if (!f) return; f.text().then((t) => { try { p = Object.assign(CI.blankProfile(), JSON.parse(t), { id: p.id, code: JSON.parse(t).code || p.code }); saveProfile(p); renderProvBar(); renderForm(); renderSide(); toast('Profile imported'); } catch (err) { toast('Not a valid profile file'); } }); } });
       side.appendChild(h('div', { class: 'card dark' }, h('div', { class: 'mono' }, 'Profile'), h('div', { class: 'h2', style: 'margin:8px 0 4px;color:#fff' }, p.name || 'Unnamed provider'), h('div', { class: 'mono' }, [p.credential, p.npi && 'NPI ' + p.npi, CI.SPECIALTIES[p.specialty] && CI.SPECIALTIES[p.specialty].label].filter(Boolean).join(' · ')),
         h('ul', { class: 'mini-findings', style: 'margin-top:16px' }, checks.map((c) => h('li', null, ico(c[0], 'sev ' + c[0]), h('b', { style: 'flex:1' }, c[1])))),
-        h('div', { class: 'row', style: 'margin-top:16px' }, h('button', { class: 'btn lime sm', onclick: ex }, 'Export'), h('button', { class: 'btn ghost sm', style: 'color:#fff;border-color:#2B3445', onclick: () => file.click() }, 'Import'), h('button', { class: 'btn ghost sm', style: 'color:#fff;border-color:#2B3445', onclick: () => { if (confirm('Clear the saved provider profile?')) { try { localStorage.removeItem('ci.profile'); } catch (e) { /* ignore */ } p = PROF(); renderWho(); renderForm(); renderSide(); } } }, 'Reset'), file)));
+        h('div', { class: 'row', style: 'margin-top:16px' }, h('button', { class: 'btn lime sm', onclick: ex }, 'Export'), h('button', { class: 'btn ghost sm', style: 'color:#fff;border-color:#2B3445', onclick: () => file.click() }, 'Import'), h('button', { class: 'btn ghost sm', style: 'color:#fff;border-color:#2B3445', onclick: () => { if (confirm('Clear the saved provider profile?')) { try { localStorage.removeItem('ci.profile'); localStorage.removeItem('ci.providers'); localStorage.removeItem('ci.activeProvider'); } catch (e) { /* ignore */ } p = PROF(); p.id = uid(); p.code = 'P1'; saveProfile(p); renderProvBar(); renderWho(); renderForm(); renderSide(); } } }, 'Reset'), file)));
       side.appendChild(h('div', { class: 'card flat' }, h('div', { class: 'mono' }, 'What this changes'), h('ul', { class: 'plain dash', style: 'margin-top:8px' }, ['Inspector and Batch default to your taxonomy, POS and payers', 'Templates hide services you don\'t do; go-to codes become one-tap chips', 'Claims get extra checks: NPI check digit, CLIA for in-office labs, services outside your list, specialty age range, payers you aren\'t enrolled with', 'Stays in this browser only - export to move it'].map((x) => h('li', null, x)))));
     }
-    renderForm(); renderSide();
-    const root = h('div', null, pageHead('00 · Setup', 'Tell it who you are.', 'Ten minutes once. Then every tab defaults to your practice and the scrubber knows what you can and can\'t bill.'),
-      h('div', { class: 'grid' }, h('div', { class: 'c7' }, form), h('div', { class: 'c5' }, side)));
+    if (!hasProfile()) { p.id = uid(); p.code = 'P1'; saveProfile(p); }
+    renderProvBar(); renderForm(); renderSide();
+    const root = h('div', null, pageHead('00 · Setup', 'Tell it who you are.', 'Practice once, each provider once. Then every tab defaults to you and the scrubber knows what each clinician can bill.'),
+      h('div', { class: 'grid' }, h('div', { class: 'c7 stack-lg' }, provBar, form, practiceCard), h('div', { class: 'c5' }, side)));
     return root;
   }
 
