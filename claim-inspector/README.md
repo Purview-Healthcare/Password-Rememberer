@@ -18,6 +18,12 @@ Offline revenue-cycle workbench for **family medicine**. Open `index.html` in a 
 | Denials | CARC/RARC fixes, appeal-letter generator, timely-filing table |
 | Code explorer / Reference | Built-in code set, dx families, taxonomies, CMS-1500 map, POS, quality measures |
 
+## Launch
+
+- **GitHub Pages:** Settings → Pages → Source *GitHub Actions*, then run the *Deploy Claim Inspector to GitHub Pages* workflow (it also runs automatically on pushes to `main`/`master` that touch `claim-inspector/`). The app is served from `claim-inspector/` as a static site.
+- **Any static host** (Netlify, Vercel, S3, an intranet server): upload the `claim-inspector/` folder as-is. No build step, no backend.
+- It is a PWA: once opened over HTTPS it can be installed on desktop or phone and works offline (service worker caches the app shell).
+
 `engine.js` is a pure module (works in Node): `node test/engine.test.js`.
 
 **Caveat:** a decision-support reference, not a payer. Code sets and payer/Medicare rules change (CPT yearly, ICD-10-CM each October, NCCI quarterly). Verify against current sources. Don't enter patient identifiers.
