@@ -71,3 +71,63 @@
     { id: 'blank', icon: 'codes', name: 'Blank claim', sub: 'Start from scratch', c: null }
   ];
 })(typeof window !== 'undefined' ? window : globalThis);
+
+/* Provider profile: service catalogue + specialty presets. */
+(function (root) {
+  'use strict';
+  const CI = (root.CI = root.CI || {});
+  const inG = (g, c) => (CI.G[g] || []).indexOf(c) >= 0;
+  const cat = (c) => (CI.CPT[c] || {}).cat;
+  const fam = (c, f) => ((CI.CPT[c] || {}).fam || []).indexOf(f) >= 0;
+  /* Each service: id, label, icon, hint, and a test(code) => does this code belong to the service. Codes matching no service are "core" (E/M etc.) and always allowed. */
+  CI.SERVICES = [
+    { id: 'office', label: 'Office visits (E/M)', icon: 'user', core: true, test: (c) => inG('em', c) || c === 'G2211' || c === '99417' || c === 'G2212' },
+    { id: 'preventive', label: 'Physicals / well visits', icon: 'physical', test: (c) => inG('prevAll', c) || /^9940[1-4]$/.test(c) },
+    { id: 'awv', label: 'Medicare AWV / IPPE', icon: 'awv', test: (c) => inG('awv', c) || ['G0444', 'G0442', 'G0443', 'G0447', 'G0136', '99497', '99498', '99483'].includes(c) },
+    { id: 'peds', label: 'Pediatrics', icon: 'peds', test: (c) => ['96110', '96161', '99173', '92551', '99188', '90460', '90461'].includes(c) || /^9938[1-4]$|^9939[1-4]$/.test(c) },
+    { id: 'vaccines', label: 'Vaccines', icon: 'vaccine', test: (c) => cat(c) === 'Vaccine' },
+    { id: 'poclab', label: 'In-office (CLIA-waived) labs', icon: 'match', test: (c) => cat(c) === 'Lab' && c !== '36415' && c !== '36416' && !['88142', '88175', '87624', '88305', '81528', 'G0123', 'G0328', '87086', '86701', '86803', '87389', '87491', '87591', '84443', '85025', '80053', '80048', '80061', '82465', '82947'].includes(c) },
+    { id: 'draw', label: 'Blood draw / send-out labs', icon: 'inject', test: (c) => ['36415', '36416', '84443', '85025', '80053', '80048', '80061', '82465', '82947', '87086', '86701', '86803', '87389', '87491', '87591', '81528', 'G0328', '87624', '88142', '88175', 'G0123'].includes(c) },
+    { id: 'inject', label: 'Joint / trigger-point injections', icon: 'inject', test: (c) => /^20(5[5]|6[0-1])\d$/.test(c) || fam(c, 'inj') && cat(c) === 'Drug' },
+    { id: 'imshots', label: 'Therapeutic injections / infusions', icon: 'inject', test: (c) => ['96372', '96365', '96374', 'J3420', 'J0696', 'J1885', 'J1100', 'J2550', 'J1050'].includes(c) },
+    { id: 'skin', label: 'Skin procedures (biopsy, lesion, wart)', icon: 'skin', test: (c) => /^11[0-9]{3}$/.test(c) && !/^1198[1-3]$/.test(c) && !/^117(19|20|21|30|65)$/.test(c) || /^17[0-9]{3}$/.test(c) || /^1(0060|0061|0120)$/.test(c) },
+    { id: 'wound', label: 'Laceration repair / wound care', icon: 'sick', test: (c) => /^12[0-9]{3}$/.test(c) || c === '17250' },
+    { id: 'foot', label: 'Nail / foot care', icon: 'skin', test: (c) => /^117(19|20|21|30|65)$/.test(c) || /^1105[5-7]$/.test(c) },
+    { id: 'msk', label: 'Splints, strapping, MSK imaging', icon: 'em', test: (c) => /^29[0-9]{3}$/.test(c) || /^7(2100|3030|3560|3610|6881|6882)$/.test(c) },
+    { id: 'ent', label: 'Ear / nose procedures', icon: 'sick', test: (c) => ['69200', '69210', '30901'].includes(c) },
+    { id: 'cardio', label: 'ECG / ambulatory BP', icon: 'em', test: (c) => ['93000', '93005', '93010', '93784'].includes(c) },
+    { id: 'pulm', label: 'Spirometry / nebulizer', icon: 'capture', test: (c) => ['94010', '94060', '94640', '94664', '94760', '94761', '71045', '71046', 'J7613'].includes(c) },
+    { id: 'womens', label: "Women's health (Pap, IUD, implant, contraception)", icon: 'prev', test: (c) => ['58300', '58301', 'Q0091', 'G0101', '11981', '11982', '11983', 'J7296', 'J7297', 'J7298', 'J7300', 'J7307', '77067', '77080'].includes(c) },
+    { id: 'ob', label: 'Obstetrics', icon: 'prev', test: (c) => cat(c) === 'OB' },
+    { id: 'gu', label: 'Bladder scan / catheter', icon: 'sick', test: (c) => ['51701', '51798'].includes(c) },
+    { id: 'gi', label: 'Hemorrhoid / minor GI', icon: 'sick', test: (c) => ['46083'].includes(c) },
+    { id: 'us', label: 'Point-of-care ultrasound', icon: 'match', test: (c) => ['76536', '76705', '76881', '76882', '20604', '20606', '20611'].includes(c) },
+    { id: 'behav', label: 'Behavioral screening & counseling', icon: 'programs', test: (c) => ['96127', '96160', '99406', '99407', '99408', '99409', '99401', '99402', '99403', '99404', 'G8431', 'G8510'].includes(c) },
+    { id: 'ccm', label: 'Care management (CCM / PCM / APCM / TCM)', icon: 'programs', test: (c) => /^994(9[0-9]|8[4-9]|3[7-9]|2[4-7])$/.test(c) || /^G055[6-8]$/.test(c) },
+    { id: 'rpm', label: 'Remote monitoring (RPM)', icon: 'tele', test: (c) => /^9945[3-8]$/.test(c) },
+    { id: 'bhi', label: 'Behavioral health integration / CoCM', icon: 'programs', test: (c) => ['99484', '99492', '99493', '99494'].includes(c) },
+    { id: 'tele', label: 'Telehealth / virtual', icon: 'tele', test: (c) => ['99421', '99422', '99423', '98016', 'G2012'].includes(c) },
+    { id: 'hospital', label: 'Hospital rounding', icon: 'programs', test: (c) => inG('hospital', c) },
+    { id: 'snf', label: 'Nursing facility / home visits', icon: 'home', test: (c) => inG('nf', c) || inG('home', c) },
+    { id: 'quality', label: 'Quality (CPT II) reporting', icon: 'denials', core: true, test: (c) => cat(c) === 'Quality' }
+  ];
+  CI.serviceOf = function (code) { code = String(code || '').toUpperCase(); return CI.SERVICES.filter((s) => s.test(code)).map((s) => s.id); };
+  CI.SPECIALTIES = {
+    fm: { label: 'Family Medicine', taxonomy: '207Q00000X', ageMin: 0, ageMax: 120, services: ['office', 'preventive', 'awv', 'peds', 'vaccines', 'poclab', 'draw', 'inject', 'imshots', 'skin', 'wound', 'ent', 'cardio', 'pulm', 'womens', 'behav', 'ccm', 'tele', 'quality'] },
+    im: { label: 'Internal Medicine', taxonomy: '207R00000X', ageMin: 18, ageMax: 120, services: ['office', 'preventive', 'awv', 'vaccines', 'poclab', 'draw', 'inject', 'imshots', 'cardio', 'pulm', 'behav', 'ccm', 'rpm', 'tele', 'hospital', 'quality'] },
+    peds: { label: 'Pediatrics', taxonomy: '208000000X', ageMin: 0, ageMax: 21, services: ['office', 'preventive', 'peds', 'vaccines', 'poclab', 'draw', 'wound', 'ent', 'pulm', 'behav', 'tele', 'quality'] },
+    np: { label: 'Family NP / PA', taxonomy: '363LF0000X', ageMin: 0, ageMax: 120, services: ['office', 'preventive', 'awv', 'peds', 'vaccines', 'poclab', 'draw', 'imshots', 'wound', 'ent', 'behav', 'ccm', 'tele', 'quality'] },
+    geri: { label: 'Geriatrics', taxonomy: '207QG0300X', ageMin: 50, ageMax: 120, services: ['office', 'awv', 'vaccines', 'poclab', 'draw', 'imshots', 'cardio', 'behav', 'ccm', 'rpm', 'tele', 'snf', 'quality'] }
+  };
+  CI.blankProfile = () => ({ name: '', credential: 'MD', npi: '', groupNpi: '', specialty: 'fm', taxonomy: '207Q00000X', clia: '', pos: '11', payers: ['commercial', 'medicare', 'medicaid'], telehealth: true, services: CI.SPECIALTIES.fm.services.slice(), favCpt: ['99213', '99214', '99396', '90471', '36415'], favDx: ['I10', 'E11.9', 'E78.5', 'Z00.00', 'J06.9'], favMods: ['25', 'QW', '95'], notes: '' });
+  /* NPI check digit: Luhn over '80840' + 10 digits. */
+  CI.validNPI = function (n) {
+    n = String(n || '').replace(/\D/g, ''); if (n.length !== 10) return false;
+    const s = '80840' + n; let sum = 0;
+    for (let i = s.length - 1, alt = false; i >= 0; i--, alt = !alt) { let d = +s[i]; if (alt) { d *= 2; if (d > 9) d -= 9; } sum += d; }
+    return sum % 10 === 0;
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+(function (root) { const CI = root.CI; Object.assign(CI.RULE_TITLE, { 'PRO-001': 'NPI fails check digit', 'PRO-002': 'Service not in provider profile', 'PRO-003': 'No CLIA on file for in-office lab', 'PRO-004': 'Telehealth not offered by provider', 'PRO-005': 'Age outside specialty range', 'PRO-006': 'Payer not in provider setup' });
+  CI.ICON.setup = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
+})(typeof window !== 'undefined' ? window : globalThis);

@@ -259,3 +259,19 @@ mark { background: var(--lime); color: var(--ink); border-radius: 3px; padding: 
 .tile:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
 .tile b { font: 600 14px var(--f-head); margin-top: 4px; }
 .tile .ico.big { width: 24px; height: 24px; }
+
+/* ---- Provider setup ---- */
+.who { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.banner { display: flex; align-items: center; gap: 16px; padding: 16px 24px; margin-bottom: 32px; border-radius: 16px; background: var(--midnight); color: #E8EBF2; border: 1px solid #1F2937; }
+.banner:hover { text-decoration: none; box-shadow: var(--shadow-h); }
+.banner .ico { color: var(--lime); width: 22px; height: 22px; }
+.banner span { flex: 1; font-size: 14px; }
+.svcgrid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+.svc { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); font: 500 13px var(--f-body); color: var(--text-2); transition: all .15s; }
+.svc .ico { color: var(--muted); }
+.svc:hover { border-color: var(--violet); }
+.svc[aria-pressed="true"] { background: var(--violet-t); border-color: transparent; color: var(--text); }
+.svc[aria-pressed="true"] .ico { color: var(--violet); }
+.svc[disabled] { cursor: default; opacity: .7; }
+.svc:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+.chip .ico { width: 14px; height: 14px; vertical-align: -2px; }

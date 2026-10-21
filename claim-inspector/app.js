@@ -24,6 +24,14 @@
     get(k, d) { try { const v = localStorage.getItem('ci.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('ci.' + k, JSON.stringify(v)); } catch (e) { /* ignore */ } }
   };
+  const PROF = () => Object.assign(CI.blankProfile(), store.get('profile', {}));
+  const hasProfile = () => !!store.get('profile', null);
+  const saveProfile = (p) => { store.set('profile', p); renderWho(); };
+  function renderWho() {
+    const el = document.getElementById('who'); if (!el) return;
+    const p = PROF(); el.innerHTML = '';
+    el.appendChild(h('a', { class: 'btn ghost sm who', href: '#/setup', title: 'Provider setup' }, ico('user'), hasProfile() ? (p.name || 'Provider') + (p.npi ? ' · ' + p.npi : '') : 'Set up provider'));
+  }
   function toast(msg) { const t = h('div', { class: 'toast', role: 'status' }, msg); document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
   function copy(text) { (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Copied'), () => toast('Copy not available')); }
   const today = () => new Date().toISOString().slice(0, 10);
@@ -70,7 +78,7 @@
   const ROUTES = [
     ['', 'Home', home, 'home'], ['inspect', 'Inspect', inspectPage, 'inspect'], ['batch', 'Batch', batchPage, 'batch'], ['match', 'Match', matchPage, 'match'], ['em', 'E/M level', emPage, 'em'],
     ['modifiers', 'Modifiers', modPage, 'mod'], ['capture', 'Capture', capturePage, 'capture'], ['preventive', 'Preventive', prevPage, 'prev'],
-    ['programs', 'Programs', programsPage, 'programs'], ['denials', 'Denials', denialsPage, 'denials'], ['codes', 'Codes', codesPage, 'codes'], ['reference', 'Reference', refPage, 'ref']
+    ['programs', 'Programs', programsPage, 'programs'], ['denials', 'Denials', denialsPage, 'denials'], ['codes', 'Codes', codesPage, 'codes'], ['reference', 'Reference', refPage, 'ref'], ['setup', 'Setup', setupPage, 'setup']
   ];
   function route() {
     const hash = location.hash.replace(/^#\/?/, '');
@@ -94,6 +102,7 @@
   function home() {
     const done = store.get('rcm', {});
     const root = h('div', null);
+    if (!hasProfile()) root.appendChild(h('a', { class: 'banner', href: '#/setup' }, ico('setup'), h('span', null, h('b', null, 'Set up your provider first. '), 'NPI, taxonomy, CLIA, the services you do and your go-to codes - then every tab is tuned to you.'), ico('arrow')));
     root.appendChild(h('section', { class: 'hero grid' },
       h('div', { class: 'c7' },
         h('div', { class: 'mono' }, 'Family & internal medicine · revenue cycle intelligence'),
@@ -160,10 +169,10 @@
   ];
   function sampleClaim(s) {
     const c = s.c;
-    return { age: c.age, sex: c.sex, payer: c.payer, status: c.status, pos: c.pos, taxonomy: c.taxonomy, dos: today(), dx: c.dx.slice(), lines: c.lines.map((l) => ({ cpt: l[0], mods: l[1], ptr: l[2], units: l[3] || 1, charge: '' })) };
+    return { age: c.age, sex: c.sex, payer: c.payer, status: c.status, pos: c.pos, taxonomy: hasProfile() ? PROF().taxonomy : (c.taxonomy || '207Q00000X'), dos: today(), dx: c.dx.slice(), lines: c.lines.map((l) => ({ cpt: l[0], mods: l[1], ptr: l[2], units: l[3] || 1, charge: '' })) };
   }
-  function blankClaim() { return { age: '', sex: '', payer: 'commercial', status: 'est', pos: '11', taxonomy: '207Q00000X', dos: today(), dx: ['', ''], lines: [{ cpt: '', mods: '', ptr: 'A', units: 1, charge: '' }] }; }
-  const toEngine = (c) => Object.assign({}, c, { lines: c.lines.map((l) => ({ cpt: l.cpt, mods: String(l.mods || '').split(/[\s,]+/).filter(Boolean), ptr: l.ptr, units: l.units, charge: l.charge })) });
+  function blankClaim() { const p = PROF(); return { age: '', sex: '', payer: (p.payers && p.payers[0]) || 'commercial', status: 'est', pos: p.pos || '11', taxonomy: p.taxonomy || '207Q00000X', dos: today(), dx: ['', ''], lines: [{ cpt: '', mods: '', ptr: 'A', units: 1, charge: '' }] }; }
+  const toEngine = (c) => Object.assign({}, c, { profile: hasProfile() ? PROF() : null, lines: c.lines.map((l) => ({ cpt: l.cpt, mods: String(l.mods || '').split(/[\s,]+/).filter(Boolean), ptr: l.ptr, units: l.units, charge: l.charge })) });
   const fromEngine = (c) => Object.assign({}, c, { lines: c.lines.map((l) => ({ cpt: l.cpt, mods: (l.mods || []).join(' '), ptr: l.ptr, units: l.units, charge: l.charge })) });
 
   function inspectPage() {
@@ -221,6 +230,7 @@
       // diagnoses
       const dxBox = h('div', { class: 'card' }, h('div', { class: 'row between', style: 'margin-bottom:16px' }, h('h3', { class: 'h3' }, 'Diagnoses ', h('span', { class: 'mono inline' }, '(box 21 · A-L)')),
         h('button', { class: 'btn ghost sm', onclick: () => { if (claim.dx.length < 12) { claim.dx.push(''); renderForm(); } } }, '+ Add dx')));
+      if (prof.favDx && prof.favDx.length) dxBox.appendChild(h('div', { class: 'chips', style: 'margin-bottom:12px' }, h('span', { class: 'mono', style: 'align-self:center' }, 'My dx'), prof.favDx.map((c) => h('button', { class: 'chip', title: (CI.ICD[E.normDx(c)] || {}).desc || '', onclick: () => { if (claim.dx.map(E.normDx).includes(E.normDx(c))) return; const k = claim.dx.indexOf(''); if (k >= 0) claim.dx[k] = c; else if (claim.dx.length < 12) claim.dx.push(c); renderForm(); run(); } }, '+ ' + c))));
       const dxList = h('div', { class: 'lines' });
       claim.dx.forEach((d, i) => {
         const hint = h('div', { class: 'hint' });
@@ -235,6 +245,7 @@
       // lines
       const lnBox = h('div', { class: 'card' }, h('div', { class: 'row between', style: 'margin-bottom:16px' }, h('h3', { class: 'h3' }, 'Service lines ', h('span', { class: 'mono inline' }, '(box 24)')),
         h('button', { class: 'btn ghost sm', onclick: () => { claim.lines.push({ cpt: '', mods: '', ptr: 'A', units: 1, charge: '' }); renderForm(); } }, '+ Add line')));
+      if (prof.favCpt && prof.favCpt.length) lnBox.appendChild(h('div', { class: 'chips', style: 'margin-bottom:12px' }, h('span', { class: 'mono', style: 'align-self:center' }, 'My codes'), prof.favCpt.map((c) => h('button', { class: 'chip', title: (CI.CPT[c] || {}).desc || '', onclick: () => { const empty = claim.lines.find((l) => !l.cpt); const ln = { cpt: c, mods: (prof.favMods || []).includes('QW') && CI.G.qwCodes.includes(c) ? 'QW' : '', ptr: 'A', units: 1, charge: '' }; if (empty) Object.assign(empty, ln); else claim.lines.push(ln); renderForm(); run(); } }, '+ ' + c))));
       const lns = h('div', { class: 'lines' }, h('div', { class: 'lrow head' }, h('span'), h('span', null, 'CPT/HCPCS'), h('span', null, 'Modifiers'), h('span', null, 'Dx ptr'), h('span', null, 'Units'), h('span', null, 'Charge'), h('span')));
       claim.lines.forEach((l, i) => {
         const hint = h('div', { class: 'hint', style: 'grid-column:1/-1;padding-left:32px' });
@@ -254,7 +265,9 @@
     }
     const dl1 = h('datalist', { id: 'icdlist' }, Object.keys(CI.ICD).map((k) => h('option', { value: CI.ICD[k].code }, CI.ICD[k].desc)));
     const dl2 = h('datalist', { id: 'cptlist' }, Object.keys(CI.CPT).map((k) => h('option', { value: k }, CI.CPT[k].desc)));
-    const tiles = h('div', { class: 'tiles' }, CI.TEMPLATES.map((t) => h('button', { class: 'tile', onclick: () => { claim = t.c ? sampleClaim({ c: t.c }) : blankClaim(); renderForm(); run(); toast(t.name + ' loaded'); } }, ico(t.icon, 'big'), h('b', null, t.name), h('span', { class: 'xs muted' }, t.sub))));
+    const prof = PROF(), does = new Set(prof.services || []);
+    const tplOk = (t) => !t.c || !hasProfile() || t.c.lines.every((l) => { const s = CI.serviceOf(l[0]); return !s.length || s.some((x) => does.has(x) || (CI.SERVICES.find((y) => y.id === x) || {}).core); });
+    const tiles = h('div', { class: 'tiles' }, CI.TEMPLATES.filter(tplOk).map((t) => h('button', { class: 'tile', onclick: () => { claim = t.c ? sampleClaim({ c: t.c }) : blankClaim(); renderForm(); run(); toast(t.name + ' loaded'); } }, ico(t.icon, 'big'), h('b', null, t.name), h('span', { class: 'xs muted' }, t.sub))));
     const root = h('div', null, dl1, dl2,
       pageHead('01 · Scrubber', 'Inspect a claim.', 'Start from a visit type, change what differs, read the verdict.'),
       tiles,
@@ -293,7 +306,7 @@
     const SAFE = ['addMod', 'removeMod', 'units', 'ptr', 'toEst', 'toNew', 'swapAdmin'];
     function analyze() {
       st.text = ta.value; store.set('batch', st);
-      results = E.parseBatch(ta.value).map((p) => p.error ? p : Object.assign(p, { res: E.inspect(p.claim) }));
+      results = E.parseBatch(ta.value).map((p) => { if (p.error) return p; if (hasProfile()) { p.claim.taxonomy = PROF().taxonomy; p.claim.profile = PROF(); } return Object.assign(p, { res: E.inspect(p.claim) }); });
       render();
     }
     function fixAll() {
@@ -379,6 +392,75 @@
           h('ul', { class: 'plain dash' }, ['Fields: label, age + sex, payer (commercial / medicare / medicaid), new or est, POS, diagnoses, services', 'Service: CPT, optional -modifiers, dx pointers (letters = order of the diagnoses), xUnits', 'Short forms work: label | dx | services', 'Use account numbers or initials - never patient names'].map((x) => h('li', null, x)))))),
       h('div', { style: 'margin-top:32px' }, summary, list));
     analyze();
+    return root;
+  }
+
+
+  /* ---------- Provider setup ---------- */
+  function setupPage() {
+    let p = PROF();
+    const form = h('div', { class: 'stack-lg' });
+    const side = h('div', { class: 'sticky stack-lg' });
+    const set = (k) => (v) => { p[k] = v; saveProfile(p); renderSide(); };
+    function chipEditor(key, placeholder, lookup) {
+      const box = h('div', { class: 'chips' });
+      const draw = () => {
+        box.innerHTML = '';
+        (p[key] || []).forEach((c, i) => box.appendChild(h('button', { class: 'chip', 'aria-pressed': 'true', title: 'Remove ' + c + (lookup && lookup(c) ? ' · ' + lookup(c) : ''), onclick: () => { p[key].splice(i, 1); saveProfile(p); draw(); } }, c, ' ×')));
+        const i = h('input', { class: 'in mono-in', placeholder, style: 'width:160px;height:32px', 'aria-label': 'Add to ' + key });
+        i.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); const v = i.value.trim().toUpperCase(); if (v && !(p[key] || []).includes(v)) { p[key] = (p[key] || []).concat(v); saveProfile(p); draw(); } } });
+        box.appendChild(i);
+      };
+      draw(); return box;
+    }
+    function renderForm() {
+      form.innerHTML = '';
+      const npiIn = inp(p.npi, (v, el) => { p.npi = v.replace(/\D/g, '').slice(0, 10); el.value = p.npi; el.classList.toggle('bad', p.npi.length === 10 && !CI.validNPI(p.npi)); saveProfile(p); renderSide(); }, { class: 'in mono-in', placeholder: '10 digits', inputmode: 'numeric' });
+      form.appendChild(h('div', { class: 'card' }, h('div', { class: 'row', style: 'margin-bottom:16px' }, ico('user', 'big'), h('h3', { class: 'h3' }, 'Who is billing')),
+        h('div', { class: 'fields' },
+          field('Provider name', inp(p.name, set('name'), { placeholder: 'Dr. A. Patel' })),
+          field('Credential', sel(['MD', 'DO', 'NP', 'PA', 'CNM', 'Other'], p.credential, set('credential'))),
+          field('Rendering NPI (type 1)', npiIn),
+          field('Group / billing NPI (type 2)', inp(p.groupNpi, (v, el) => { p.groupNpi = v.replace(/\D/g, '').slice(0, 10); el.value = p.groupNpi; saveProfile(p); renderSide(); }, { class: 'in mono-in', placeholder: 'optional' }))),
+        h('div', { class: 'fields', style: 'margin-top:12px' },
+          field('Specialty', sel(Object.keys(CI.SPECIALTIES).map((k) => [k, CI.SPECIALTIES[k].label]), p.specialty, (v) => { const s = CI.SPECIALTIES[v]; p.specialty = v; p.taxonomy = s.taxonomy; p.services = s.services.slice(); saveProfile(p); renderForm(); renderSide(); toast(s.label + ' preset applied'); })),
+          field('Taxonomy', sel(Object.keys(CI.TAX).map((k) => [k, k + ' · ' + CI.TAX[k].name]), p.taxonomy, set('taxonomy'))),
+          field('CLIA certificate #', inp(p.clia, set('clia'), { class: 'in mono-in', placeholder: '10D1234567 (blank = no in-office labs)' })),
+          field('Default place of service', sel(CI.POS.map((x) => [x[0], x[0] + ' · ' + x[1]]), p.pos, set('pos')))),
+        h('div', { style: 'margin-top:16px' }, h('div', { class: 'mono', style: 'margin-bottom:8px' }, 'Payers you bill'), h('div', { class: 'chips' }, [['commercial', 'Commercial'], ['medicare', 'Medicare'], ['medicaid', 'Medicaid'], ['tricare', 'TRICARE'], ['selfpay', 'Self-pay']].map((x) => h('button', { class: 'chip', 'aria-pressed': String((p.payers || []).includes(x[0])), onclick: () => { const s = new Set(p.payers || []); s.has(x[0]) ? s.delete(x[0]) : s.add(x[0]); p.payers = Array.from(s); saveProfile(p); renderForm(); renderSide(); } }, x[1])),
+          h('button', { class: 'chip', 'aria-pressed': String(p.telehealth !== false), onclick: () => { p.telehealth = p.telehealth === false; saveProfile(p); renderForm(); } }, ico('tele'), ' Telehealth offered')))));
+      const does = new Set(p.services || []);
+      form.appendChild(h('div', { class: 'card' }, h('div', { class: 'row between', style: 'margin-bottom:4px' }, h('div', { class: 'row' }, ico('capture', 'big'), h('h3', { class: 'h3' }, 'Services you provide')), h('span', { class: 'pill violet' }, does.size + ' selected')),
+        h('p', { class: 'small muted', style: 'margin:0 0 16px' }, 'Tap to toggle. Codes outside this list get flagged on claims; templates and charge-capture follow it.'),
+        h('div', { class: 'svcgrid' }, CI.SERVICES.map((s) => h('button', { class: 'svc', 'aria-pressed': String(does.has(s.id) || !!s.core), disabled: !!s.core, onclick: () => { does.has(s.id) ? does.delete(s.id) : does.add(s.id); p.services = Array.from(does); saveProfile(p); renderForm(); renderSide(); } }, ico(s.icon), h('span', null, s.label))))));
+      form.appendChild(h('div', { class: 'card stack' }, h('div', { class: 'row' }, ico('codes', 'big'), h('h3', { class: 'h3' }, 'Your go-to codes')),
+        h('p', { class: 'small muted', style: 'margin:0' }, 'These become one-tap chips on the Inspector. Type a code and press Enter.'),
+        field('Procedure codes', chipEditor('favCpt', '99214', (c) => (CI.CPT[c] || {}).desc)),
+        field('Diagnoses', chipEditor('favDx', 'E11.9', (c) => (CI.ICD[E.normDx(c)] || {}).desc)),
+        field('Modifiers', chipEditor('favMods', '25', (c) => (CI.MODMAP[c] || {}).name)),
+        field('Notes (payer quirks, auth rules, anything the biller should remember)', (() => { const t = h('textarea', { class: 'in', rows: 3, placeholder: 'e.g. BCBS wants POS 11 + 95 for video visits; Medicaid needs EP on well visits' }); t.value = p.notes || ''; t.addEventListener('input', () => { p.notes = t.value; saveProfile(p); }); return t; })())));
+    }
+    function renderSide() {
+      side.innerHTML = '';
+      const npiOk = p.npi.length === 10 && CI.validNPI(p.npi);
+      const checks = [
+        [p.name ? 'ok' : 'warn', p.name ? 'Name set' : 'Add provider name'],
+        [!p.npi ? 'warn' : npiOk ? 'ok' : 'error', !p.npi ? 'Add rendering NPI' : npiOk ? 'NPI check digit valid' : 'NPI fails check digit'],
+        [p.taxonomy ? 'ok' : 'warn', 'Taxonomy ' + (CI.TAX[p.taxonomy] ? CI.TAX[p.taxonomy].name : 'not set')],
+        [p.clia ? 'ok' : 'info', p.clia ? 'CLIA on file' : 'No CLIA - in-office labs will be flagged'],
+        [(p.services || []).length > 2 ? 'ok' : 'warn', (p.services || []).length + ' services selected'],
+        [(p.favCpt || []).length ? 'ok' : 'info', (p.favCpt || []).length + ' go-to codes']
+      ];
+      const ex = () => { const blob = new Blob([JSON.stringify(p, null, 2)], { type: 'application/json' }); const a = h('a', { href: URL.createObjectURL(blob), download: 'claim-inspector-profile.json' }); document.body.appendChild(a); a.click(); a.remove(); };
+      const file = h('input', { type: 'file', accept: '.json', style: 'display:none', onchange: (e) => { const f = e.target.files[0]; if (!f) return; f.text().then((t) => { try { p = Object.assign(CI.blankProfile(), JSON.parse(t)); saveProfile(p); renderForm(); renderSide(); toast('Profile imported'); } catch (err) { toast('Not a valid profile file'); } }); } });
+      side.appendChild(h('div', { class: 'card dark' }, h('div', { class: 'mono' }, 'Profile'), h('div', { class: 'h2', style: 'margin:8px 0 4px;color:#fff' }, p.name || 'Unnamed provider'), h('div', { class: 'mono' }, [p.credential, p.npi && 'NPI ' + p.npi, CI.SPECIALTIES[p.specialty] && CI.SPECIALTIES[p.specialty].label].filter(Boolean).join(' · ')),
+        h('ul', { class: 'mini-findings', style: 'margin-top:16px' }, checks.map((c) => h('li', null, ico(c[0], 'sev ' + c[0]), h('b', { style: 'flex:1' }, c[1])))),
+        h('div', { class: 'row', style: 'margin-top:16px' }, h('button', { class: 'btn lime sm', onclick: ex }, 'Export'), h('button', { class: 'btn ghost sm', style: 'color:#fff;border-color:#2B3445', onclick: () => file.click() }, 'Import'), h('button', { class: 'btn ghost sm', style: 'color:#fff;border-color:#2B3445', onclick: () => { if (confirm('Clear the saved provider profile?')) { try { localStorage.removeItem('ci.profile'); } catch (e) { /* ignore */ } p = PROF(); renderWho(); renderForm(); renderSide(); } } }, 'Reset'), file)));
+      side.appendChild(h('div', { class: 'card flat' }, h('div', { class: 'mono' }, 'What this changes'), h('ul', { class: 'plain dash', style: 'margin-top:8px' }, ['Inspector and Batch default to your taxonomy, POS and payers', 'Templates hide services you don\'t do; go-to codes become one-tap chips', 'Claims get extra checks: NPI check digit, CLIA for in-office labs, services outside your list, specialty age range, payers you aren\'t enrolled with', 'Stays in this browser only - export to move it'].map((x) => h('li', null, x)))));
+    }
+    renderForm(); renderSide();
+    const root = h('div', null, pageHead('00 · Setup', 'Tell it who you are.', 'Ten minutes once. Then every tab defaults to your practice and the scrubber knows what you can and can\'t bill.'),
+      h('div', { class: 'grid' }, h('div', { class: 'c7' }, form), h('div', { class: 'c5' }, side)));
     return root;
   }
 
@@ -716,5 +798,6 @@
   });
   const th = store.get('theme', null); if (th) document.documentElement.dataset.theme = th;
   document.getElementById('theme').innerHTML = CI.ICON.sun;
+  renderWho();
   route();
 })();

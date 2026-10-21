@@ -1,6 +1,6 @@
 const assert = require('assert');
 global.CI = {};
-require('../data/cpt.js'); require('../data/icd.js'); require('../data/modifiers.js');
+require('../data/cpt.js'); require('../data/icd.js'); require('../data/modifiers.js'); require('../data/reference.js'); require('../ui-kit.js');
 const CI = require('../engine.js');
 const E = CI.engine;
 const rules = (c) => E.inspect(c).issues.map((i) => i.rule);
@@ -59,5 +59,12 @@ t('batch parser', () => {
   assert.strictEqual(b[0].claim.lines.length, 4); assert(b[1].error);
   const short = E.parseBatch('X | 70 F | medicare | G0439 | Z00.00 | G0439');
   assert.strictEqual(short.length, 1);
+});
+t('npi + profile rules', () => {
+  assert(CI.validNPI('1234567893')); assert(!CI.validNPI('1234567890'));
+  const prof = Object.assign(CI.blankProfile(), { npi: '1234567890', clia: '', specialty: 'im', services: ['office'], payers: ['commercial'] });
+  const r = rules({ age: 8, payer: 'medicare', pos: '11', profile: prof, dx: ['J02.0'], lines: [{ cpt: '99213', ptr: 'A' }, { cpt: '87880', ptr: 'A' }, { cpt: '20610', ptr: 'A' }] });
+  ['PRO-001', 'PRO-002', 'PRO-003', 'PRO-005', 'PRO-006'].forEach((x) => assert(r.includes(x), x));
+  assert.deepStrictEqual(CI.serviceOf('20610'), ['inject']); assert(CI.serviceOf('99214').length === 1);
 });
 console.log(n + ' tests passed');

@@ -341,6 +341,25 @@
       if (tax.name.indexOf('Geriatric') >= 0 && prevs.some((l) => info(l.cpt) && info(l.cpt).age && info(l.cpt).age[1] < 50)) add('warn', 'TAX-009', 'Geriatric taxonomy billing a pediatric/young adult preventive code.');
     }
 
+    /* ---------- Provider profile rules ---------- */
+    const prof = claim.profile;
+    if (prof && CI.SERVICES) {
+      const sp = CI.SPECIALTIES && CI.SPECIALTIES[prof.specialty];
+      if (prof.npi && CI.validNPI && !CI.validNPI(prof.npi)) add('error', 'PRO-001', 'Rendering NPI ' + prof.npi + ' fails the check-digit test - fix it in Setup before submitting anything.');
+      const does = new Set(prof.services || []);
+      lines.forEach((l) => {
+        const svc = CI.serviceOf(l.cpt);
+        if (svc.length && !svc.some((s) => does.has(s) || (CI.SERVICES.find((x) => x.id === s) || {}).core)) {
+          const names = svc.map((s) => (CI.SERVICES.find((x) => x.id === s) || {}).label).join(' / ');
+          add('warn', 'PRO-002', l.cpt + ' belongs to "' + names + '", which is not in this provider\'s service list. Wrong provider on the claim, or update Setup.', { line: l.i });
+        }
+        if (G().qwCodes.includes(l.cpt) && !prof.clia && payer !== 'selfpay') add('error', 'PRO-003', l.cpt + ' is an in-office lab but no CLIA certificate is on file in Setup. Payers require the CLIA number (box 23).', { line: l.i });
+        if (['95', '93', 'GT', 'FQ'].some((m) => l.mods.includes(m)) && prof.telehealth === false) add('warn', 'PRO-004', l.cpt + ' is billed as telehealth but the profile says this provider does not offer telehealth.', { line: l.i });
+      });
+      if (sp && age != null && (age < sp.ageMin || age > sp.ageMax)) add('warn', 'PRO-005', 'Patient age ' + age + ' is outside the usual ' + sp.label + ' range (' + sp.ageMin + '-' + (sp.ageMax >= 120 ? '+' : sp.ageMax) + ').');
+      if (prof.payers && prof.payers.length && !prof.payers.includes(payer) && payer !== 'selfpay') add('warn', 'PRO-006', 'Payer "' + payer + '" is not one this provider is set up to bill (Setup → payers). Check enrollment / credentialing.');
+    }
+
     // Score
     const errs = issues.filter((x) => x.sev === 'error').length, warns = issues.filter((x) => x.sev === 'warn').length;
     const score = Math.max(0, 100 - errs * 18 - warns * 6 - issues.filter((x) => x.sev === 'info').length * 1);
