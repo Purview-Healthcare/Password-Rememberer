@@ -43,6 +43,19 @@
     const p = PROF(); el.innerHTML = '';
     el.appendChild(h('a', { class: 'btn ghost sm who', href: '#/setup', title: 'Provider setup' }, ico('user'), hasProfile() ? (p.name || 'Provider') + (providers().length > 1 ? ' +' + (providers().length - 1) : '') : 'Set up provider'));
   }
+  /* Activity log: every claim inspected, batched or submitted - per provider, local only. */
+  const ACT_MAX = 1500;
+  function logActivity(e) {
+    const list = store.get('activity', []);
+    const i = list.findIndex((x) => x.id === e.id);
+    if (i >= 0) list[i] = Object.assign({}, list[i], e, { ts: list[i].ts, updated: Date.now() }); else list.push(Object.assign({ ts: Date.now() }, e));
+    while (list.length > ACT_MAX) list.shift();
+    store.set('activity', list);
+  }
+  function actEntry(id, kind, claim, res) {
+    const c = toEngine(claim), pv = PROVIDER_FOR(claim) || {};
+    return { id, kind, providerId: pv.id || '', provider: pv.name || '', payer: c.payer, label: (claim.patient && claim.patient.account) || (claim.label) || c.lines.map((l) => l.cpt).filter(Boolean)[0] || 'claim', dos: c.dos, score: res.score, errs: res.errs, warns: res.warns, value: CI.claimValue(c), rules: res.issues.filter((i) => i.sev !== 'info').map((i) => i.rule), cpts: c.lines.map((l) => l.cpt).filter(Boolean), dx: (c.dx || []).map(E.normDx).filter(Boolean) };
+  }
   function download(name, text) { const blob = new Blob([text], { type: 'text/plain' }); const a = h('a', { href: URL.createObjectURL(blob), download: name }); document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
   function printForm(items) {
     const prac = PRACTICE();
@@ -95,9 +108,10 @@
 
   /* ---------- routes ---------- */
   const ROUTES = [
-    ['', 'Home', home, 'home'], ['inspect', 'Inspect', inspectPage, 'inspect'], ['batch', 'Batch', batchPage, 'batch'], ['match', 'Match', matchPage, 'match'], ['em', 'E/M level', emPage, 'em'],
-    ['modifiers', 'Modifiers', modPage, 'mod'], ['capture', 'Capture', capturePage, 'capture'], ['preventive', 'Preventive', prevPage, 'prev'],
-    ['programs', 'Programs', programsPage, 'programs'], ['denials', 'Denials', denialsPage, 'denials'], ['codes', 'Codes', codesPage, 'codes'], ['reference', 'Reference', refPage, 'ref'], ['setup', 'Setup', setupPage, 'setup'], ['submit', 'Submit', submitPage, 'denials']
+    ['', 'My desk', dashboard, 'home', 1], ['inspect', 'Inspect', inspectPage, 'inspect', 1], ['batch', 'Batch', batchPage, 'batch', 1], ['submit', 'Submit', submitPage, 'denials', 1], ['setup', 'Setup', setupPage, 'setup', 1],
+    ['guides', 'Guides', home, 'ref', 2], ['match', 'Match', matchPage, 'match', 2], ['em', 'E/M level', emPage, 'em', 2],
+    ['modifiers', 'Modifiers', modPage, 'mod', 2], ['capture', 'Capture', capturePage, 'capture', 2], ['preventive', 'Preventive', prevPage, 'prev', 2],
+    ['programs', 'Programs', programsPage, 'programs', 2], ['denials', 'Denials', denialsPage, 'denials', 2], ['codes', 'Codes', codesPage, 'codes', 2], ['reference', 'Reference', refPage, 'ref', 2]
   ];
   function route() {
     const hash = location.hash.replace(/^#\/?/, '');
@@ -107,22 +121,171 @@
     renderNav(r[0]);
     view.innerHTML = '';
     view.appendChild(r[2](params));
-    document.title = (r[1] === 'Home' ? '' : r[1] + ' · ') + 'Claim Inspector';
+    document.title = (r[1] === 'My desk' ? '' : r[1] + ' · ') + 'Claim Inspector';
     window.scrollTo(0, 0);
   }
   function renderNav(cur) {
     const nav = document.getElementById('nav');
     nav.innerHTML = '';
-    ROUTES.forEach((r) => nav.appendChild(h('a', { href: '#/' + r[0], 'aria-current': r[0] === cur ? 'page' : null }, ico(r[3]), r[1])));
+    [1, 2].forEach((g) => { const grp = h('div', { class: 'navgrp g' + g }, h('span', { class: 'navlbl' }, g === 1 ? 'Work' : 'Guides')); ROUTES.filter((r) => r[4] === g).forEach((r) => grp.appendChild(h('a', { href: '#/' + r[0], 'aria-current': r[0] === cur ? 'page' : null }, ico(r[3]), r[1]))); nav.appendChild(grp); });
   }
   window.addEventListener('hashchange', route);
+
+
+  /* ---------- Demo mode ---------- */
+  const isDemo = () => !!store.get('demo', false);
+  function loadDemo() {
+    const bp = CI.blankProfile();
+    const p1 = Object.assign({}, bp, { id: 'demo1', code: 'AM', name: 'Dr. Anita Mehra', credential: 'MD', npi: '1234567893', clia: '45D0123456', specialty: 'fm', favCpt: ['99213', '99214', '99396', 'G0439', '20610', '90471'], favDx: ['I10', 'E11.65', 'E78.5', 'Z00.00', 'M17.11'] });
+    const p2 = Object.assign({}, bp, { id: 'demo2', code: 'JL', name: 'Jordan Lee', credential: 'NP', npi: '1234567893', clia: '45D0123456', specialty: 'np', taxonomy: '363LF0000X', services: CI.SPECIALTIES.np.services.slice() });
+    store.set('providers', [p1, p2]); store.set('activeProvider', 'demo1');
+    store.set('practice', { name: 'Riverbend Family Medicine', address1: '410 Riverbend Pkwy', city: 'Austin', state: 'TX', zip: '78704', phone: '512-555-0142', taxId: '74-1234567', groupNpi: '1234567893', submitterId: 'RBFM01', receiverId: 'CLRHOUSE', receiverName: 'Clearinghouse', contact: 'Billing office', payerIds: { medicare: '04412', medicaid: 'TXMCD', commercial: '84980' } });
+    // submission file: three claims in different states
+    const mk = (i, pt, cid) => { const c = sampleClaim(SAMPLES[i]); c.providerId = 'demo1'; c.cid = cid; c.patient = Object.assign(CI.forms.blankPatient(), pt); return { id: uid(), added: today(), claim: c }; };
+    store.set('queue', [
+      mk(3, { name: 'Alvarez, Maria', dob: '1968-03-14', address: '12 Pecan St', city: 'Austin', state: 'TX', zip: '78745', memberId: 'ZGP4471022', payerName: 'BCBS Texas', payerId: '84980', account: 'RB-2041' }, 'i:demo1'),
+      mk(1, { name: 'Okafor, Daniel', dob: '1951-11-02', address: '88 Lamar Blvd', city: 'Austin', state: 'TX', zip: '78703', memberId: '1EG4TE5MK72', payerName: 'Medicare Part B', payerId: '04412', account: 'RB-2042' }, 'i:demo2'),
+      mk(0, { name: 'Nguyen, Linh', dob: '1974-07-21', address: '', city: 'Austin', state: 'TX', zip: '78741', memberId: 'UHC55019', payerName: 'UnitedHealthcare', account: 'RB-2043' }, 'i:demo3')
+    ]);
+    store.set('batch', { text: BATCH_SAMPLE.replace(/A-10(0[1-9]|1[0-5])/g, (m) => m.replace('A-', 'RB-')).replace(/\| 71 F \| medicare/, '@JL | 71 F | medicare') });
+    const c0 = sampleClaim(SAMPLES[0]); c0.providerId = 'demo1'; store.set('claim', c0);
+    store.set('demo', true);
+  }
+  function exitDemo() { ['providers', 'activeProvider', 'practice', 'queue', 'batch', 'claim', 'activity', 'demo', 'dashRange', 'dashWho', 'rcm', 'match', 'em', 'capture'].forEach((k) => { try { localStorage.removeItem('ci.' + k); } catch (e) { /* ignore */ } }); }
+  function demoBanner() { return isDemo() ? h('div', { class: 'banner demo' }, ico('info'), h('span', null, h('b', null, 'Demo mode. '), 'Riverbend Family Medicine is sample data - providers, patients, activity and claims are invented. Explore freely, then exit to start with your own practice.'), h('button', { class: 'btn lime sm', onclick: () => { if (confirm('Exit demo and clear all sample data?')) { exitDemo(); location.hash = '#/'; location.reload(); } } }, 'Exit demo')) : null; }
+
+  /* ---------- Provider dashboard ("My desk") ---------- */
+  function dashboard() {
+    const root = h('div', null);
+    if (!hasProfile()) {
+      root.appendChild(h('section', { class: 'hero grid' },
+        h('div', { class: 'c7' }, h('div', { class: 'mono' }, 'Welcome'), h('h1', { class: 'display', style: 'margin-top:16px' }, 'Your desk, once it knows ', h('span', { class: 'hl' }, 'who you are'), '.'),
+          h('p', { class: 'lede', style: 'margin-top:24px' }, 'Set up the practice and your provider profile. From then on this page shows how your claims are doing, what keeps getting flagged and what is waiting to go out.'),
+          h('div', { class: 'row', style: 'margin-top:32px' }, h('button', { class: 'btn primary lg', onclick: () => { loadDemo(); demoActivityFor(['demo1', 'demo2']); location.reload(); } }, ico('ok'), 'See it with sample data'), h('a', { class: 'btn ghost lg', href: '#/setup' }, ico('setup'), 'Set up my practice')),
+          h('p', { class: 'small muted', style: 'margin-top:12px' }, 'The sample loads a two-provider practice, 30 days of checked claims, a batch and a submission file. One click removes it.')),
+        h('div', { class: 'c5 hero-aside' }, h('div', { class: 'card dark' }, h('div', { class: 'mono' }, 'What you will see here'), h('ul', { class: 'mini-findings', style: 'margin-top:12px' }, [['ok', 'Claims checked, clean-claim score, revenue at risk'], ['ok', 'The rules you keep tripping - and the fix'], ['ok', 'Money left on the table (G2211, ACP, screenings)'], ['ok', 'Submission file status'], ['ok', 'Recent activity per provider']].map((f) => h('li', null, ico(f[0], 'sev ' + f[0]), h('b', { style: 'flex:1' }, f[1]))))))));
+      return root;
+    }
+    const pv = PROF(), all = store.get('activity', []);
+    let range = store.get('dashRange', 30), who = store.get('dashWho', 'me');
+    const body = h('div', null);
+    function render() {
+      store.set('dashRange', range); store.set('dashWho', who);
+      body.innerHTML = '';
+      const since = Date.now() - range * 86400000;
+      const mine = all.filter((e) => (who === 'all' || e.providerId === pv.id) && e.ts >= since && e.kind !== 'submit');
+      const subs = all.filter((e) => (who === 'all' || e.providerId === pv.id) && e.ts >= since && e.kind === 'submit');
+      const n = mine.length, blocked = mine.filter((e) => e.errs > 0), avg = n ? Math.round(mine.reduce((s, e) => s + e.score, 0) / n) : 0;
+      const value = mine.reduce((s, e) => s + (e.value || 0), 0), atRisk = blocked.reduce((s, e) => s + (e.value || 0), 0);
+      const queue = store.get('queue', []);
+      const hour = new Date().getHours(), greet = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+      // header
+      body.appendChild(h('div', { class: 'row between', style: 'align-items:flex-end;margin-bottom:32px;gap:24px' },
+        h('div', null, h('div', { class: 'mono' }, new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) + ' · ' + (CI.SPECIALTIES[pv.specialty] || {}).label),
+          h('h1', { class: 'display', style: 'margin-top:8px;font-size:clamp(32px,4.5vw,48px)' }, greet + ', ' + (pv.name || 'Doctor').replace(/^Dr\.?\s*/i, 'Dr. ') + '.'),
+          h('p', { class: 'lede', style: 'margin-top:8px;font-size:17px' }, n ? (blocked.length ? blocked.length + ' of your last ' + n + ' claims would have been denied. ' + (atRisk ? money(atRisk) + ' at risk.' : '') : 'All ' + n + ' claims in this window passed. Nice.') : 'Nothing checked in this window yet.')),
+        h('div', { class: 'row' },
+          h('div', { class: 'chips' }, [[7, '7d'], [30, '30d'], [90, '90d'], [365, '1y']].map((r) => h('button', { class: 'chip', 'aria-pressed': String(range === r[0]), onclick: () => { range = r[0]; render(); } }, r[1]))),
+          providers().length > 1 ? h('div', { class: 'chips' }, [['me', '@' + pv.code], ['all', 'Practice']].map((r) => h('button', { class: 'chip', 'aria-pressed': String(who === r[0]), onclick: () => { who = r[0]; render(); } }, r[1]))) : null)));
+      // KPI tiles
+      body.appendChild(h('div', { class: 'statstrip', style: 'margin:0 0 32px' },
+        stat(String(n), 'claims checked'), stat(n ? avg : '—', 'avg clean score', n ? (avg >= 85 ? 'good' : avg >= 60 ? 'warn' : 'bad') : ''), stat(n ? Math.round(blocked.length / n * 100) + '%' : '—', 'would deny', n ? (blocked.length / n < 0.05 ? 'good' : 'bad') : ''),
+        stat(money(value), 'est. value checked'), stat(String(queue.length), 'in submission file'), stat(String(subs.length), 'submitted')));
+      // main grid: trend + issues | queue + money + actions
+      const left = h('div', { class: 'c8 stack-lg' }), right = h('div', { class: 'c4 stack-lg' });
+      left.appendChild(h('div', { class: 'card' }, h('div', { class: 'row between' }, h('div', null, h('div', { class: 'mono' }, 'Trend'), h('h3', { class: 'h3', style: 'margin-top:4px' }, 'Clean-claim score by day')), h('span', { class: 'pill' }, 'last ' + range + ' days')), trend(mine, range)));
+      // top rules
+      const counts = {}; mine.forEach((e) => (e.rules || []).forEach((r) => { counts[r] = (counts[r] || 0) + 1; }));
+      const top = Object.keys(counts).sort((x, y) => counts[y] - counts[x]).slice(0, 6), max = top.length ? counts[top[0]] : 1;
+      const GUIDE = { MOD: '#/modifiers', NCCI: '#/modifiers', LAT: '#/modifiers', LAB: '#/modifiers', DX: '#/codes?tab=icd', NEC: '#/match', VAC: '#/preventive', AWV: '#/programs', MCR: '#/programs', EM: '#/em', G22: '#/em', CNS: '#/capture', TAX: '#/setup', PRO: '#/setup', AGE: '#/match', SEX: '#/match', NEW: '#/em', POS: '#/reference', CCM: '#/programs', TCM: '#/programs', DRG: '#/capture' };
+      left.appendChild(h('div', { class: 'card' }, h('div', { class: 'mono' }, 'Coaching'), h('h3', { class: 'h3', style: 'margin:4px 0 16px' }, top.length ? 'What keeps getting flagged' : 'No flags yet'),
+        top.length ? h('div', { class: 'bars' }, top.map((r) => h('a', { class: 'bar', href: GUIDE[r.split('-')[0]] || '#/guides' }, h('span', { class: 'bl' }, h('b', null, CI.RULE_TITLE[r] || r), h('span', { class: 'mono inline muted' }, ' ' + r)), h('span', { class: 'bt' }, h('i', { style: 'width:' + (counts[r] / max * 100) + '%' })), h('span', { class: 'bn' }, counts[r] + '×'), ico('arrow')))) : h('p', { class: 'small muted' }, 'Flags from inspected and batched claims will rank here, each linked to the guide that fixes it.')));
+      // recent activity
+      const recent = all.filter((e) => who === 'all' || e.providerId === pv.id).slice(-8).reverse();
+      left.appendChild(h('div', { class: 'card', style: 'padding:0;overflow:hidden' }, h('div', { style: 'padding:24px 24px 8px' }, h('div', { class: 'mono' }, 'Recent'), h('h3', { class: 'h3', style: 'margin-top:4px' }, 'Latest claims')),
+        recent.length ? recent.map((e) => h('div', { class: 'act' }, ico(e.kind === 'submit' ? 'batch' : e.errs ? 'error' : e.warns ? 'warn' : 'ok', 'sev ' + (e.kind === 'submit' ? 'info' : e.errs ? 'error' : e.warns ? 'warn' : 'ok')),
+          h('div', null, h('b', null, e.label), h('span', { class: 'mono inline muted' }, '  ' + (e.cpts || []).slice(0, 4).join(' ') + (e.cpts && e.cpts.length > 4 ? ' …' : '')), h('div', { class: 'xs muted' }, { inspect: 'Inspected', batch: 'Batch', submit: 'Submitted' }[e.kind] + ' · ' + new Date(e.updated || e.ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + (who === 'all' && e.provider ? ' · ' + e.provider : '') + ' · ' + e.payer)),
+          h('span', { class: 'h4', style: 'color:' + (e.errs ? 'var(--red)' : e.warns ? 'var(--amber)' : 'var(--violet)') }, e.kind === 'submit' ? money(e.value || 0) : String(e.score)))) : h('p', { class: 'small muted', style: 'padding:0 24px 24px' }, 'Nothing yet.')));
+      // right column
+      const readyQ = queue.length;
+      right.appendChild(h('div', { class: 'card dark' }, h('div', { class: 'mono' }, 'Submission file'), h('div', { class: 'score good', style: 'font-size:56px;margin:8px 0 4px' }, String(readyQ)), h('div', { class: 'small', style: 'color:#B6BCC8' }, readyQ ? 'claims waiting to be sent' : 'empty - add claims from the Inspector'),
+        h('div', { class: 'row', style: 'margin-top:16px' }, h('a', { class: 'btn lime sm', href: '#/submit' }, 'Open file'), h('a', { class: 'btn ghost sm', style: 'color:#fff;border-color:#2B3445', href: '#/inspect' }, 'New claim'))));
+      // money on the table
+      const opp = opportunities(mine);
+      right.appendChild(h('div', { class: 'card' }, h('div', { class: 'row', style: 'gap:8px' }, ico('dollar', 'big'), h('div', null, h('div', { class: 'mono' }, 'Left on the table'), h('h3', { class: 'h3' }, opp.total ? '≈ ' + money(opp.total) : 'Nothing obvious'))),
+        opp.items.length ? h('ul', { class: 'plain', style: 'margin-top:12px' }, opp.items.map((o) => h('li', { class: 'opp' }, h('b', null, o.t), h('span', { class: 'small muted' }, o.d), h('span', { class: 'pill lime' }, money(o.v))))) : h('p', { class: 'small muted', style: 'margin:8px 0 0' }, 'Based on patterns in checked claims: G2211, ACP with AWV, depression screening, tobacco counseling.')));
+      // quick actions
+      right.appendChild(h('div', { class: 'card flat' }, h('div', { class: 'mono', style: 'margin-bottom:12px' }, 'Do now'), h('div', { class: 'stack-sm' },
+        h('a', { class: 'btn primary', style: 'width:100%', href: '#/inspect' }, ico('inspect'), 'Inspect a claim'), h('a', { class: 'btn ghost', style: 'width:100%', href: '#/batch' }, ico('batch'), 'Review today\'s batch'), h('a', { class: 'btn ghost', style: 'width:100%', href: '#/denials' }, ico('denials'), 'Work a denial'), h('a', { class: 'btn ghost', style: 'width:100%', href: '#/guides' }, ico('ref'), 'Guides & references'))));
+      if (!all.length) right.appendChild(h('div', { class: 'card flat' }, h('div', { class: 'mono' }, 'Empty desk?'), h('p', { class: 'small muted' }, 'Load 30 days of sample activity to see what this page looks like in use. It is clearly marked and one click removes it.'), h('div', { class: 'row' }, h('button', { class: 'btn ghost sm', onclick: () => { demoActivity(); location.reload(); } }, 'Load demo activity'))));
+      if (all.some((e) => e.demo)) right.appendChild(h('div', { class: 'row', style: 'justify-content:flex-end' }, h('button', { class: 'btn ghost sm', onclick: () => { store.set('activity', all.filter((e) => !e.demo)); location.reload(); } }, 'Remove demo activity')));
+      body.appendChild(h('div', { class: 'grid' }, left, right));
+      body.appendChild(h('p', { class: 'xs muted', style: 'margin-top:32px' }, 'Scores and values come from this app\'s own checks and approximate fee tables - not from payer remittances. Activity stays in this browser.'));
+    }
+    function stat(v, l, tone) { return h('div', { class: 'stat' }, h('b', { style: tone === 'good' ? 'color:var(--violet)' : tone === 'bad' ? 'color:var(--red)' : tone === 'warn' ? 'color:var(--amber)' : '' }, v), h('div', { class: 'mono' }, l)); }
+    function trend(list, days) {
+      const W = 720, H = 160, padL = 28, padR = 12, padT = 12, padB = 24;
+      const byDay = {}; list.forEach((e) => { const d = new Date(e.ts).toISOString().slice(0, 10); (byDay[d] = byDay[d] || []).push(e.score); });
+      const pts = []; for (let i = days - 1; i >= 0; i--) { const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10); if (byDay[d]) pts.push({ d, v: Math.round(byDay[d].reduce((a, b) => a + b, 0) / byDay[d].length), n: byDay[d].length, x: i }); }
+      if (pts.length < 2) return h('p', { class: 'small muted', style: 'margin:16px 0 0' }, 'The trend appears once there are claims on two or more days.');
+      const x = (i) => padL + (W - padL - padR) * (1 - i / (days - 1)), y = (v) => padT + (H - padT - padB) * (1 - v / 100);
+      const path = pts.map((p, i) => (i ? 'L' : 'M') + x(p.x).toFixed(1) + ' ' + y(p.v).toFixed(1)).join(' ');
+      const area = path + ' L' + x(pts[pts.length - 1].x).toFixed(1) + ' ' + y(0) + ' L' + x(pts[0].x).toFixed(1) + ' ' + y(0) + ' Z';
+      const svg = h('div', { class: 'chart', html: '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-label="Clean-claim score by day">' +
+        [0, 50, 100].map((g) => '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + y(g) + '" y2="' + y(g) + '" class="grid"/><text x="' + (padL - 6) + '" y="' + (y(g) + 4) + '" class="tick" text-anchor="end">' + g + '</text>').join('') +
+        '<path d="' + area + '" class="area"/><path d="' + path + '" class="line"/>' +
+        pts.map((p) => '<circle cx="' + x(p.x) + '" cy="' + y(p.v) + '" r="4" class="pt" data-d="' + p.d + '" data-v="' + p.v + '" data-n="' + p.n + '"/>').join('') +
+        '<line class="xh" x1="0" x2="0" y1="' + padT + '" y2="' + (H - padB) + '" visibility="hidden"/></svg><div class="tip" hidden></div>' });
+      const tip = svg.querySelector('.tip'), xh = svg.querySelector('.xh'), el = svg.querySelector('svg');
+      el.addEventListener('mousemove', (ev) => { const r = el.getBoundingClientRect(); const mx = (ev.clientX - r.left) / r.width * W; let best = pts[0]; pts.forEach((p) => { if (Math.abs(x(p.x) - mx) < Math.abs(x(best.x) - mx)) best = p; }); xh.setAttribute('x1', x(best.x)); xh.setAttribute('x2', x(best.x)); xh.setAttribute('visibility', 'visible'); tip.hidden = false; tip.textContent = new Date(best.d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · score ' + best.v + ' · ' + best.n + ' claim' + (best.n > 1 ? 's' : ''); tip.style.left = Math.min(r.width - 170, Math.max(0, (ev.clientX - r.left) - 80)) + 'px'; });
+      el.addEventListener('mouseleave', () => { tip.hidden = true; xh.setAttribute('visibility', 'hidden'); });
+      return svg;
+    }
+    function opportunities(list) {
+      const items = [];
+      const cnt = (f) => list.filter(f).length;
+      const g2211 = cnt((e) => e.payer === 'medicare' && e.cpts.some((c) => CI.G.estEM.includes(c) || CI.G.newEM.includes(c)) && !e.cpts.includes('G2211') && !e.cpts.some((c) => CI.G.prevOrAwv.includes(c)));
+      if (g2211) items.push({ t: 'G2211 not added', d: g2211 + ' Medicare office visits without the complexity add-on', v: g2211 * CI.FEE.G2211 });
+      const acp = cnt((e) => e.cpts.some((c) => ['G0438', 'G0439'].includes(c)) && !e.cpts.includes('99497'));
+      if (acp) items.push({ t: 'ACP with the AWV', d: acp + ' wellness visits without advance care planning (99497-33)', v: acp * CI.FEE['99497'] });
+      const dep = cnt((e) => e.cpts.includes('G0439') && !e.cpts.includes('G0444'));
+      if (dep) items.push({ t: 'Depression screen at AWV', d: dep + ' subsequent AWVs without G0444', v: dep * CI.FEE.G0444 });
+      const tob = cnt((e) => e.dx.some((d) => d.startsWith('F17') || d === 'Z720') && !e.cpts.some((c) => ['99406', '99407'].includes(c)));
+      if (tob) items.push({ t: 'Tobacco counseling', d: tob + ' visits with a tobacco dx but no 99406/99407', v: tob * CI.FEE['99406'] });
+      const sdoh = cnt((e) => e.payer === 'medicare' && e.cpts.some((c) => ['G0438', 'G0439'].includes(c)) && !e.cpts.includes('G0136'));
+      if (sdoh) items.push({ t: 'SDOH risk assessment', d: sdoh + ' Medicare AWVs without G0136', v: sdoh * CI.FEE.G0136 });
+      return { items: items.sort((a, b) => b.v - a.v).slice(0, 5), total: items.reduce((s, i) => s + i.v, 0) };
+    }
+    function demoActivity() { demoActivityFor(providers().map((p) => p.id)); }
+    render();
+    root.appendChild(demoBanner());
+    root.appendChild(body);
+    return root;
+  }
+  function demoActivityFor(ids) {
+    {
+      const pvs = ids.map((id) => ({ id })), list = store.get('activity', []);
+      const pool = SAMPLES.filter((s) => !/stress/i.test(s.name)).concat(CI.TEMPLATES.filter((t) => t.c && t.id !== 'blank').map((t) => ({ name: t.name, c: t.c })));
+      const R = Math.random;
+      for (let d = 29; d >= 0; d--) { const k = 2 + Math.floor(R() * 5); for (let j = 0; j < k; j++) { const s = pool[Math.floor(R() * pool.length)], c = sampleClaim(s); const pr = pvs[Math.floor(R() * pvs.length)]; c.providerId = pr.id;
+          /* realistic slips: drop 25, forget QW, forget G2211, physical on Medicare, wrong new/est, an unspecified dx */
+          c.lines.forEach((l) => { l.mods = String(l.mods || ''); if (R() < 0.3) l.mods = l.mods.replace(/\b25\b/, '').trim(); if (R() < 0.3) l.mods = l.mods.replace(/\bQW\b/, '').trim(); });
+          if (R() < 0.35) c.lines = c.lines.filter((l) => l.cpt !== 'G2211');
+          if (R() < 0.12 && c.lines[0] && CI.G.estEM.includes(c.lines[0].cpt)) c.lines[0].cpt = { '99212': '99202', '99213': '99203', '99214': '99204', '99215': '99205' }[c.lines[0].cpt];
+          if (R() < 0.15 && c.payer === 'commercial' && c.age >= 65) c.payer = 'medicare';
+          if (R() < 0.2) c.dx.push(['E78.5', 'N39.0', 'F32.9', 'J45.909', 'M54.50'][Math.floor(R() * 5)]);
+          const res = E.inspect(toEngine(c)); const e = actEntry('d:' + uid(), Math.random() < 0.5 ? 'inspect' : 'batch', c, res); e.ts = Date.now() - d * 86400000 - Math.floor(Math.random() * 8 * 3600000); e.updated = e.ts; e.demo = true; e.label = 'DEMO-' + (1000 + list.length); list.push(e); if (res.errs === 0 && Math.random() < 0.5) list.push(Object.assign({}, e, { id: 'ds:' + uid(), kind: 'submit' })); } }
+      list.sort((a, b) => a.ts - b.ts); store.set('activity', list);
+    }
+  }
 
   /* ---------- Home ---------- */
   function home() {
     const done = store.get('rcm', {});
     const root = h('div', null);
-    if (!hasProfile()) root.appendChild(h('a', { class: 'banner', href: '#/setup' }, ico('setup'), h('span', null, h('b', null, 'Set up your provider first. '), 'NPI, taxonomy, CLIA, the services you do and your go-to codes - then every tab is tuned to you.'), ico('arrow')));
-    root.appendChild(h('section', { class: 'hero grid' },
+    root.appendChild(pageHead('Guides', 'The reference shelf.', 'Everything that is not a claim in front of you: the tools that explain, the schedules, the playbooks and the end-to-end cycle.'));
+    if (false) root.appendChild(h('a', { class: 'banner', href: '#/setup' }, ico('setup'), h('span', null, h('b', null, 'Set up your provider first. '), 'NPI, taxonomy, CLIA, the services you do and your go-to codes - then every tab is tuned to you.'), ico('arrow')));
+    if (false) root.appendChild(h('section', { class: 'hero grid' },
       h('div', { class: 'c7' },
         h('div', { class: 'mono' }, 'Family & internal medicine · revenue cycle intelligence'),
         h('h1', { class: 'display', style: 'margin-top:16px' }, 'Every claim, ', h('span', { class: 'hl' }, 'inspected'), ' before it leaves the building.'),
@@ -135,11 +298,11 @@
         h('div', { class: 'scorebox', style: 'margin:16px 0 8px' }, h('div', { class: 'score good' }, '64'), h('div', { class: 'mono', style: 'padding-bottom:8px' }, 'clean-claim score')),
         h('ul', { class: 'mini-findings' },
           [['error', 'Add modifier 25', 'L2'], ['error', 'Medicare flu admin is G0008', 'L4'], ['warn', 'Unspecified diagnosis', 'Dx C'], ['info', 'Add QW (waived test)', 'L3']].map((f) => h('li', null, ico(f[0], 'sev ' + f[0]), h('b', { style: 'flex:1' }, f[1]), h('span', { class: 'pill where' }, f[2]))))))));
-    root.appendChild(h('div', { class: 'statstrip' }, CI.KPI.slice(0, 5).map((k) => h('div', { class: 'stat' }, h('b', null, k[1]), h('div', { class: 'mono' }, k[0])))));
+    if (false) root.appendChild(h('div', { class: 'statstrip' }, CI.KPI.slice(0, 5).map((k) => h('div', { class: 'stat' }, h('b', null, k[1]), h('div', { class: 'mono' }, k[0])))));
 
     // Tools
-    root.appendChild(h('section', { class: 'block' },
-      h('div', { class: 'sec-head' }, h('div', null, h('div', { class: 'mono' }, 'The workbench'), h('h2', { class: 'h2', style: 'margin-top:8px' }, 'Ten instruments, one purpose.'))),
+    root.appendChild(h('section', { style: 'margin-top:0' },
+      h('div', { class: 'sec-head' }, h('div', null, h('div', { class: 'mono' }, 'Tools & guides'), h('h2', { class: 'h2', style: 'margin-top:8px' }, 'Pick what you need.'))),
       h('div', { class: 'tools' },
         tool('wide', '01 · Inspect', 'Claim scrubber', 'Build a CMS-1500-style claim. 90+ rules check modifiers, bundling, age and sex edits, POS, vaccines, Medicare quirks, dx pointers, medical necessity and provider taxonomy. One-click fixes.', '#/inspect'),
         tool('', '02 · Batch', 'Batch review', 'Paste 15-20 claims, get a ranked worklist, bulk-apply safe fixes, export results.', '#/batch'),
@@ -201,10 +364,13 @@
     const formHost = h('div', { class: 'stack-lg' });
     let last = null;
     function save() { store.set('claim', claim); }
+    let logT;
     function run() {
       save();
       last = E.inspect(toEngine(claim));
       renderResults();
+      clearTimeout(logT);
+      if (claim.lines.some((l) => l.cpt)) logT = setTimeout(() => { if (!claim.cid) { claim.cid = 'i:' + uid(); save(); } logActivity(actEntry(claim.cid, 'inspect', claim, last)); }, 900);
     }
     function renderResults() {
       const r = last;
@@ -260,7 +426,7 @@
       const upd = (k) => (v) => { claim[k] = v; run(); };
       formHost.appendChild(h('div', { class: 'card' },
         h('div', { class: 'row between', style: 'margin-bottom:16px;flex-wrap:nowrap' }, h('h3', { class: 'h3' }, 'Visit'),
-          h('div', { class: 'row', style: 'flex-wrap:nowrap;min-width:0' }, sel([['', 'Load a sample…']].concat(SAMPLES.map((s, i) => [String(i), s.name])), '', (v) => { if (v === '') return; claim = sampleClaim(SAMPLES[+v]); renderForm(); run(); }), h('button', { class: 'btn ghost sm', onclick: () => { claim = blankClaim(); renderForm(); run(); } }, 'Clear'))),
+          h('div', { class: 'row', style: 'flex-wrap:nowrap;min-width:0' }, sel([['', 'Load a sample…']].concat(SAMPLES.map((s, i) => [String(i), s.name])), '', (v) => { if (v === '') return; claim = sampleClaim(SAMPLES[+v]); claim.cid = ''; renderForm(); run(); }), h('button', { class: 'btn ghost sm', onclick: () => { claim = blankClaim(); claim.cid = ''; renderForm(); run(); } }, 'Clear'))),
         h('div', { class: 'fields' },
           field('Patient age', inp(claim.age, upd('age'), { type: 'number', min: 0, max: 120, placeholder: 'yrs' })),
           field('Sex', sel([['', '—'], ['F', 'Female'], ['M', 'Male']], claim.sex, upd('sex'))),
@@ -311,9 +477,9 @@
     const dl2 = h('datalist', { id: 'cptlist' }, Object.keys(CI.CPT).map((k) => h('option', { value: k }, CI.CPT[k].desc)));
     const prof = PROF(), does = new Set(prof.services || []);
     const tplOk = (t) => !t.c || !hasProfile() || t.c.lines.every((l) => { const s = CI.serviceOf(l[0]); return !s.length || s.some((x) => does.has(x) || (CI.SERVICES.find((y) => y.id === x) || {}).core); });
-    const tiles = h('div', { class: 'tiles' }, CI.TEMPLATES.filter(tplOk).map((t) => h('button', { class: 'tile', onclick: () => { claim = t.c ? sampleClaim({ c: t.c }) : blankClaim(); renderForm(); run(); toast(t.name + ' loaded'); } }, ico(t.icon, 'big'), h('b', null, t.name), h('span', { class: 'xs muted' }, t.sub))));
+    const tiles = h('div', { class: 'tiles' }, CI.TEMPLATES.filter(tplOk).map((t) => h('button', { class: 'tile', onclick: () => { claim = t.c ? sampleClaim({ c: t.c }) : blankClaim(); claim.cid = ''; renderForm(); run(); toast(t.name + ' loaded'); } }, ico(t.icon, 'big'), h('b', null, t.name), h('span', { class: 'xs muted' }, t.sub))));
     const root = h('div', null, dl1, dl2,
-      pageHead('01 · Scrubber', 'Inspect a claim.', 'Start from a visit type, change what differs, read the verdict.'),
+      pageHead('01 · Scrubber', 'Inspect a claim.', 'Start from a visit type, change what differs, read the verdict.'), demoBanner(),
       tiles,
       h('div', { class: 'grid', style: 'margin-top:32px' }, h('div', { class: 'c7' }, formHost), h('div', { class: 'c5' }, h('div', { class: 'sticky' }, results))));
     renderForm(); run();
@@ -351,6 +517,7 @@
     function analyze() {
       st.text = ta.value; store.set('batch', st);
       results = E.parseBatch(ta.value).map((p) => { if (p.error) return p; const m = /@([A-Za-z0-9]+)/.exec(p.label); const pv = (m && PROF_BY_CODE(m[1])) || (hasProfile() ? PROF() : null); if (m && !PROF_BY_CODE(m[1])) p.unknownProvider = m[1]; if (pv) { p.claim.taxonomy = pv.taxonomy; p.claim.profile = pv; p.claim.providerId = pv.id; } return Object.assign(p, { res: E.inspect(p.claim) }); });
+      results.forEach((p) => { if (p.res) logActivity(actEntry('b:' + p.label.replace(/\s+/g, ''), 'batch', Object.assign({ label: p.label }, p.claim), p.res)); });
       render();
     }
     function fixAll() {
@@ -426,7 +593,7 @@
     ta.addEventListener('input', () => { clearTimeout(ta._t); ta._t = setTimeout(analyze, 250); });
     const file = h('input', { type: 'file', accept: '.txt,.csv,.tsv', style: 'display:none', onchange: (e) => { const f = e.target.files[0]; if (!f) return; f.text().then((t) => { ta.value = t; analyze(); }); } });
     const root = h('div', null,
-      pageHead('02 · Batch', 'Fifteen claims. One pass.', 'Paste the day, one claim per line. Worst first, safe fixes in one click, CSV out.'),
+      pageHead('02 · Batch', 'Fifteen claims. One pass.', 'Paste the day, one claim per line. Worst first, safe fixes in one click, CSV out.'), demoBanner(),
       h('div', { class: 'grid' },
         h('div', { class: 'c8' }, h('div', { class: 'card' },
           h('div', { class: 'row between', style: 'margin-bottom:12px' }, h('h3', { class: 'h3' }, 'Claims'), h('div', { class: 'row' },
@@ -457,7 +624,7 @@
           h('div', null, h('div', { class: 'score', style: 'font-size:48px;color:' + (ready.length === items.length ? 'var(--lime)' : '#E5A93C') }, String(ready.length)), h('div', { class: 'mono' }, 'ready to send')),
           h('div', null, h('div', { class: 'score', style: 'font-size:48px;color:#fff' }, money(tot)), h('div', { class: 'mono' }, 'total charges'))),
         h('div', { class: 'row' },
-          h('button', { class: 'btn lime', disabled: !ready.length, onclick: () => download('claims-' + today() + '.837', CI.forms.x837(ready, PRACTICE())) }, ico('batch'), 'Download 837P (' + ready.length + ')'),
+          h('button', { class: 'btn lime', disabled: !ready.length, onclick: () => { download('claims-' + today() + '.837', CI.forms.x837(ready, PRACTICE())); ready.forEach((it) => logActivity(actEntry('s:' + it.q.id, 'submit', it.q.claim, it.res))); toast(ready.length + ' claims logged as submitted'); } }, ico('batch'), 'Download 837P (' + ready.length + ')'),
           h('button', { class: 'btn ghost', style: 'color:#fff;border-color:#2B3445', disabled: !ready.length, onclick: () => download('claims-' + today() + '.csv', CI.forms.csv(ready)) }, 'CSV'),
           h('button', { class: 'btn ghost', style: 'color:#fff;border-color:#2B3445', disabled: !items.length, onclick: () => printForm(items) }, 'Print all CMS-1500'),
           h('button', { class: 'btn ghost', style: 'color:#fff;border-color:#2B3445', disabled: !items.length, onclick: () => { if (confirm('Clear the submission file? (Download first.)')) { store.set('queue', []); render(); } } }, 'Clear')))));

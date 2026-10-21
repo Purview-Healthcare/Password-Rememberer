@@ -5,6 +5,7 @@ Offline revenue-cycle workbench for **family medicine**. Open `index.html` in a 
 | Tab | What it does |
 |---|---|
 | Submit | Submission file: printable CMS-1500 facsimile, ANSI 837P 5010 upload file, CSV; readiness check per claim |
+| My desk | Provider dashboard: claims checked, clean-claim score trend, would-deny rate, revenue at risk, what keeps getting flagged (linked to guides), money left on the table, submission-file status, recent activity. Per provider or practice-wide. One-click demo practice |
 | Setup | Practice (billing NPI, tax ID, clearinghouse IDs, payer IDs) + multiple providers (@code per provider). Each provider: NPI (check-digit validated), taxonomy, specialty preset, CLIA, POS, payers, services provided, go-to codes. Drives defaults and 6 extra claim rules |
 | Home | 12-step end-to-end RCM cycle with checklists, pitfalls and KPI targets |
 | Inspect claim | CMS-1500-style scrubber: ~90 rules (modifiers 25/59/X/QW/33/95, NCCI-style pairs, age/sex edits, POS, vaccines, Medicare G-codes, dx pointers, medical necessity, taxonomy scope) with one-click fixes |
