@@ -44,12 +44,33 @@
     return h('span', null, text.slice(0, i), h('mark', null, text.slice(i, i + q.length)), text.slice(i + q.length));
   }
   const SEV = { error: 'Error', warn: 'Warning', info: 'Note' };
+  const ico = (name, cls) => { const s = h('span', { class: 'ico ' + (cls || ''), html: CI.ICON[name] || '' }); return s; };
+  const title = (it) => CI.RULE_TITLE[it.rule] || it.msg.split(/[.:]/)[0];
+  const money = (n) => '$' + Math.round(n).toLocaleString();
+  /* One finding: icon + short title + where; the full explanation folds open. */
+  function issueRow(it, opts) {
+    opts = opts || {};
+    const where = it.line != null ? 'L' + (it.line + 1) : it.dx != null ? 'Dx ' + 'ABCDEFGHIJKL'[it.dx] : '';
+    const why = h('p', { class: 'why', hidden: true }, it.msg);
+    const row = h('div', { class: 'issue ' + (opts.dark ? 'ondark' : '') },
+      ico(it.sev, 'sev ' + it.sev),
+      h('div', null,
+        h('button', { class: 'ititle', 'aria-expanded': 'false', onclick: (e) => { why.hidden = !why.hidden; e.currentTarget.setAttribute('aria-expanded', String(!why.hidden)); } }, h('b', null, title(it)), where && h('span', { class: 'pill where' }, where), h('span', { class: 'mono inline muted' }, 'why?')),
+        why,
+        opts.action && it.fix && opts.canFix(it) ? h('div', { class: 'meta' }, h('button', { class: 'btn sm lime', onclick: () => opts.action(it) }, ico('fix'), 'Fix it')) : null));
+    return row;
+  }
+  function gauge(score, size) {
+    size = size || 120; const r = (size - 12) / 2, c = 2 * Math.PI * r, pct = Math.max(0, Math.min(100, score)) / 100;
+    const col = score >= 85 ? 'var(--lime)' : score >= 60 ? '#E5A93C' : 'var(--red)';
+    return h('div', { class: 'gauge', style: 'width:' + size + 'px;height:' + size + 'px', html: '<svg viewBox="0 0 ' + size + ' ' + size + '"><circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" stroke="rgba(139,147,161,.25)" stroke-width="10" fill="none"/><circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" stroke="' + col + '" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="' + (c * pct) + ' ' + c + '" transform="rotate(-90 ' + size / 2 + ' ' + size / 2 + ')"/></svg><div class="gv">' + score + '</div>' });
+  }
 
   /* ---------- routes ---------- */
   const ROUTES = [
-    ['', 'Home', home], ['inspect', 'Inspect claim', inspectPage], ['batch', 'Batch review', batchPage], ['match', 'Match lab', matchPage], ['em', 'E/M leveler', emPage],
-    ['modifiers', 'Modifiers', modPage], ['capture', 'Charge capture', capturePage], ['preventive', 'Preventive', prevPage],
-    ['programs', 'Programs', programsPage], ['denials', 'Denials', denialsPage], ['codes', 'Code explorer', codesPage], ['reference', 'Reference', refPage]
+    ['', 'Home', home, 'home'], ['inspect', 'Inspect', inspectPage, 'inspect'], ['batch', 'Batch', batchPage, 'batch'], ['match', 'Match', matchPage, 'match'], ['em', 'E/M level', emPage, 'em'],
+    ['modifiers', 'Modifiers', modPage, 'mod'], ['capture', 'Capture', capturePage, 'capture'], ['preventive', 'Preventive', prevPage, 'prev'],
+    ['programs', 'Programs', programsPage, 'programs'], ['denials', 'Denials', denialsPage, 'denials'], ['codes', 'Codes', codesPage, 'codes'], ['reference', 'Reference', refPage, 'ref']
   ];
   function route() {
     const hash = location.hash.replace(/^#\/?/, '');
@@ -65,7 +86,7 @@
   function renderNav(cur) {
     const nav = document.getElementById('nav');
     nav.innerHTML = '';
-    ROUTES.forEach((r, i) => nav.appendChild(h('a', { href: '#/' + r[0], 'aria-current': r[0] === cur ? 'page' : null }, h('span', { class: 'n' }, String(i).padStart(2, '0')), r[1])));
+    ROUTES.forEach((r) => nav.appendChild(h('a', { href: '#/' + r[0], 'aria-current': r[0] === cur ? 'page' : null }, ico(r[3]), r[1])));
   }
   window.addEventListener('hashchange', route);
 
@@ -75,17 +96,17 @@
     const root = h('div', null);
     root.appendChild(h('section', { class: 'hero grid' },
       h('div', { class: 'c7' },
-        h('div', { class: 'mono' }, 'Family medicine · revenue cycle intelligence'),
+        h('div', { class: 'mono' }, 'Family & internal medicine · revenue cycle intelligence'),
         h('h1', { class: 'display', style: 'margin-top:16px' }, 'Every claim, ', h('span', { class: 'hl' }, 'inspected'), ' before it leaves the building.'),
-        h('p', { class: 'lede', style: 'margin-top:24px' }, 'One workbench for the whole family-medicine revenue cycle: scrub the claim, pair CPT to diagnosis to taxonomy, level the visit, pick the modifier, catch missed charges, and fight the denial that still slips through.'),
+        h('p', { class: 'lede', style: 'margin-top:24px' }, 'Scrub it, match it, level it, fix it - then submit. Built for family and internal medicine.'),
         h('div', { class: 'row', style: 'margin-top:32px' },
-          h('a', { class: 'btn primary lg', href: '#/inspect' }, 'Inspect a claim'),
-          h('a', { class: 'btn ghost lg', href: '#/match' }, 'Run a match'))),
+          h('a', { class: 'btn primary lg', href: '#/inspect' }, ico('inspect'), 'Inspect a claim'),
+          h('a', { class: 'btn ghost lg', href: '#/batch' }, ico('batch'), 'Review a batch'))),
       h('div', { class: 'c5 hero-aside' }, h('div', { class: 'card dark' },
         h('div', { class: 'mono' }, 'Live scrubber · sample'),
         h('div', { class: 'scorebox', style: 'margin:16px 0 8px' }, h('div', { class: 'score good' }, '64'), h('div', { class: 'mono', style: 'padding-bottom:8px' }, 'clean-claim score')),
         h('ul', { class: 'mini-findings' },
-          [['error', '99396 + 99214 on one date need modifier 25 on the problem E/M.'], ['error', 'Medicare flu shot: administration is G0008, not 90471.'], ['warn', 'E78.5 is non-specific. Document the lipid type.'], ['info', 'QW modifier for in-office A1c (83036).']].map((f) => h('li', null, h('span', { class: 'dot ' + f[0] }), h('span', null, f[1]))))))));
+          [['error', 'Add modifier 25', 'L2'], ['error', 'Medicare flu admin is G0008', 'L4'], ['warn', 'Unspecified diagnosis', 'Dx C'], ['info', 'Add QW (waived test)', 'L3']].map((f) => h('li', null, ico(f[0], 'sev ' + f[0]), h('b', { style: 'flex:1' }, f[1]), h('span', { class: 'pill where' }, f[2]))))))));
     root.appendChild(h('div', { class: 'statstrip' }, CI.KPI.slice(0, 5).map((k) => h('div', { class: 'stat' }, h('b', null, k[1]), h('div', { class: 'mono' }, k[0])))));
 
     // Tools
@@ -110,7 +131,8 @@
       h('div', { class: 'cycle' }, CI.RCM.map((s) => cycleStep(s, done)))));
     return root;
   }
-  function tool(cls, kicker, title, text, href) { return h('a', { class: 'tool ' + cls, href }, h('span', { class: 'mono' }, kicker), h('h3', { class: 'h3' }, title), h('p', null, text)); }
+  const TOOL_ICON = { '#/inspect': 'inspect', '#/batch': 'batch', '#/match': 'match', '#/em': 'em', '#/modifiers': 'mod', '#/capture': 'capture', '#/preventive': 'prev', '#/programs': 'programs', '#/denials': 'denials' };
+  function tool(cls, kicker, title, text, href) { return h('a', { class: 'tool ' + cls, href }, h('div', { class: 'row between' }, ico(TOOL_ICON[href], 'big'), h('span', { class: 'mono' }, kicker)), h('h3', { class: 'h3' }, title), h('p', null, text), h('span', { class: 'go' }, ico('arrow'))); }
   function cycleStep(s, done) {
     const total = s.tasks.length;
     const count = () => s.tasks.filter((t, i) => done[s.id + i]).length;
@@ -159,24 +181,22 @@
       const r = last;
       results.innerHTML = '';
       const good = r.errs === 0;
-      results.appendChild(h('div', { class: 'mono' }, 'Inspection result'));
-      results.appendChild(h('div', { class: 'scorebox', style: 'margin:16px 0 16px' },
-        h('div', { class: 'score ' + (good ? 'good' : 'bad') }, String(r.score)),
-        h('div', { style: 'padding-bottom:8px' }, h('div', { class: 'mono' }, 'clean-claim score'),
-          h('div', { class: 'row', style: 'margin-top:8px;gap:8px' }, h('span', { class: 'pill red' }, r.errs + ' errors'), h('span', { class: 'pill amber' }, r.warns + ' warnings'), h('span', { class: 'pill violet' }, r.infos + ' notes')))));
+      const val = CI.claimValue(claim);
+      results.appendChild(h('div', { class: 'row between', style: 'align-items:center' },
+        gauge(r.score, 112),
+        h('div', { class: 'stack-sm', style: 'flex:1;min-width:160px' },
+          h('div', { class: 'h3', style: 'color:#fff' }, good ? (r.warns ? 'Review, then submit' : 'Ready to submit') : 'Blocked - fix errors'),
+          h('div', { class: 'row', style: 'gap:6px' }, r.errs ? h('span', { class: 'pill red' }, r.errs + ' errors') : null, r.warns ? h('span', { class: 'pill amber' }, r.warns + ' warnings') : null, r.infos ? h('span', { class: 'pill violet' }, r.infos + ' notes') : null, !r.issues.length ? h('span', { class: 'pill lime' }, 'clean') : null),
+          val ? h('div', { class: 'mono' }, '≈ ' + money(val) + ' est. value') : null)));
+      results.appendChild(h('hr', { class: 'rule', style: 'border-color:#1F2937' }));
       results.appendChild(h('div', { class: 'row', style: 'margin-bottom:8px' },
         h('button', { class: 'btn lime sm', onclick: () => copy(report()) }, 'Copy report'),
         h('button', { class: 'btn ghost sm', style: 'color:#fff;border-color:#2B3445', onclick: () => window.print() }, 'Print')));
       if (!r.issues.length) results.appendChild(h('p', { class: 'small', style: 'color:#C7F36B' }, 'No issues found. Ready to submit.'));
       const order = { error: 0, warn: 1, info: 2 };
-      r.issues.slice().sort((a, b) => order[a.sev] - order[b.sev]).forEach((it) => {
-        const where = it.line != null ? 'line ' + (it.line + 1) : it.dx != null ? 'dx ' + 'ABCDEFGHIJKL'[it.dx] : 'claim';
-        results.appendChild(h('div', { class: 'issue', style: 'border-color:#1F2937' }, h('span', { class: 'dot ' + it.sev }),
-          h('div', null, h('p', { style: 'color:#E8EBF2' }, it.msg),
-            h('div', { class: 'meta' }, h('span', { class: 'mono' }, SEV[it.sev] + ' · ' + it.rule + ' · ' + where),
-              it.fix && it.fix.type !== 'note' && it.fix.type !== 'suggestDx' && h('button', { class: 'btn sm lime', onclick: () => { claim = fromEngine(E.applyFix(toEngine(claim), it)); renderForm(); run(); toast('Fix applied'); } }, 'Apply fix'),
-              it.fix && it.fix.type === 'suggestDx' && h('a', { class: 'btn sm ghost', style: 'color:#fff;border-color:#2B3445', href: '#/match' }, 'See supporting dx')))));
-      });
+      const fixable = r.issues.filter((i) => i.fix && i.fix.type !== 'note' && i.fix.type !== 'suggestDx');
+      if (fixable.length > 1) results.appendChild(h('button', { class: 'btn lime', style: 'margin-bottom:8px', onclick: () => { let c = toEngine(claim); for (let k = 0; k < 3; k++) { const rr = E.inspect(c); const fx = rr.issues.filter((i) => i.fix && i.fix.type !== 'note' && i.fix.type !== 'suggestDx'); if (!fx.length) break; fx.forEach((i) => { c = E.applyFix(c, i); }); } claim = fromEngine(c); renderForm(); run(); toast('Fixes applied'); } }, ico('fix'), 'Fix all ' + fixable.length));
+      r.issues.slice().sort((a, b) => order[a.sev] - order[b.sev]).forEach((it) => results.appendChild(issueRow(it, { dark: true, canFix: (i) => i.fix.type !== 'note' && i.fix.type !== 'suggestDx', action: (i) => { claim = fromEngine(E.applyFix(toEngine(claim), i)); renderForm(); run(); toast('Fix applied'); } })));
     }
     function report() {
       const c = claim;
@@ -234,9 +254,11 @@
     }
     const dl1 = h('datalist', { id: 'icdlist' }, Object.keys(CI.ICD).map((k) => h('option', { value: CI.ICD[k].code }, CI.ICD[k].desc)));
     const dl2 = h('datalist', { id: 'cptlist' }, Object.keys(CI.CPT).map((k) => h('option', { value: k }, CI.CPT[k].desc)));
+    const tiles = h('div', { class: 'tiles' }, CI.TEMPLATES.map((t) => h('button', { class: 'tile', onclick: () => { claim = t.c ? sampleClaim({ c: t.c }) : blankClaim(); renderForm(); run(); toast(t.name + ' loaded'); } }, ico(t.icon, 'big'), h('b', null, t.name), h('span', { class: 'xs muted' }, t.sub))));
     const root = h('div', null, dl1, dl2,
-      pageHead('01 · Scrubber', 'Inspect a claim before the payer does.', 'Enter the encounter the way it will go on the CMS-1500. Results update as you type; apply suggested fixes with one click.'),
-      h('div', { class: 'grid' }, h('div', { class: 'c7' }, formHost), h('div', { class: 'c5' }, h('div', { class: 'sticky' }, results))));
+      pageHead('01 · Scrubber', 'Inspect a claim.', 'Start from a visit type, change what differs, read the verdict.'),
+      tiles,
+      h('div', { class: 'grid', style: 'margin-top:32px' }, h('div', { class: 'c7' }, formHost), h('div', { class: 'c5' }, h('div', { class: 'sticky' }, results))));
     renderForm(); run();
     return root;
   }
@@ -303,15 +325,17 @@
       const bad = ok.filter((p) => p.res.errs), warn = ok.filter((p) => !p.res.errs && p.res.warns), clean = ok.filter((p) => !p.res.errs && !p.res.warns);
       const fixable = ok.reduce((n, p) => n + p.res.issues.filter((i) => i.fix && SAFE.includes(i.fix.type)).length, 0);
       summary.innerHTML = '';
+      const atRisk = bad.reduce((s, p) => s + CI.claimValue(p.claim), 0), total = ok.reduce((s, p) => s + CI.claimValue(p.claim), 0);
       summary.appendChild(h('div', { class: 'card dark' },
         h('div', { class: 'row between', style: 'align-items:flex-end' },
           h('div', { class: 'row', style: 'gap:40px;align-items:flex-end' },
             h('div', null, h('div', { class: 'score good' }, String(ok.length)), h('div', { class: 'mono' }, 'claims reviewed')),
+            total ? h('div', null, h('div', { class: 'score', style: 'font-size:48px;color:#fff' }, money(atRisk)), h('div', { class: 'mono' }, 'at risk of ≈ ' + money(total))) : null,
             h('div', null, h('div', { class: 'score', style: 'font-size:48px;color:var(--red)' }, String(bad.length)), h('div', { class: 'mono' }, 'blocked by errors')),
             h('div', null, h('div', { class: 'score', style: 'font-size:48px;color:#E5A93C' }, String(warn.length)), h('div', { class: 'mono' }, 'need a look')),
             h('div', null, h('div', { class: 'score', style: 'font-size:48px;color:var(--lime)' }, String(clean.length)), h('div', { class: 'mono' }, 'ready to submit'))),
           h('div', { class: 'row' },
-            h('button', { class: 'btn lime', disabled: fixable === 0, onclick: fixAll }, 'Apply ' + fixable + ' safe fixes'),
+            h('button', { class: 'btn lime', disabled: fixable === 0, onclick: fixAll }, ico('fix'), 'Fix ' + fixable + ' safely'),
             h('button', { class: 'btn ghost', style: 'color:#fff;border-color:#2B3445', onclick: () => copy(csv()) }, 'Copy results CSV'),
             h('button', { class: 'btn ghost', style: 'color:#fff;border-color:#2B3445', onclick: () => window.print() }, 'Print')))));
       list.innerHTML = '';
@@ -327,13 +351,12 @@
         row.appendChild(h('button', { style: 'all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:88px 64px 1fr auto;gap:16px;align-items:center;width:100%;padding:16px 24px', 'aria-expanded': String(open), onclick: () => { openIx[p.label] = !open; render(); } },
           h('span', { class: 'code' }, p.label),
           h('span', { class: 'h3', style: 'color:' + (r.errs ? 'var(--red)' : r.warns ? 'var(--amber)' : 'var(--violet)') }, String(r.score)),
-          h('span', { class: 'small' }, p.claim.lines.map((l) => l.cpt + (l.mods ? '-' + l.mods.replace(/\s+/g, '-') : '')).join('  '), h('div', { class: 'muted xs' }, top ? top.msg.slice(0, 120) + (top.msg.length > 120 ? '…' : '') : 'No issues')),
+          h('span', { class: 'small' }, p.claim.lines.map((l) => l.cpt + (l.mods ? '-' + l.mods.replace(/\s+/g, '-') : '')).join('  '), h('div', { class: 'muted xs' }, top ? title(top) : 'No issues')),
           h('span', { class: 'row', style: 'gap:6px' }, r.errs ? h('span', { class: 'pill red' }, r.errs + ' err') : null, r.warns ? h('span', { class: 'pill amber' }, r.warns + ' warn') : null, !r.errs && !r.warns ? h('span', { class: 'pill lime' }, 'ready') : null)));
         if (open) {
           const body = h('div', { style: 'padding:0 24px 24px 24px;background:var(--soft)' });
           const order = { error: 0, warn: 1, info: 2 };
-          r.issues.slice().sort((a, b) => order[a.sev] - order[b.sev]).forEach((it) => body.appendChild(h('div', { class: 'issue' }, h('span', { class: 'dot ' + it.sev }), h('div', null, h('p', null, it.msg), h('div', { class: 'meta' }, h('span', { class: 'mono' }, it.rule + (it.line != null ? ' · line ' + (it.line + 1) : '')),
-            it.fix && SAFE.includes(it.fix.type) && h('button', { class: 'btn sm primary', onclick: () => { p.claim = E.applyFix(p.claim, it); ta.value = results.map((x) => x.claim ? serialize(x) : x.raw).join('\n'); analyze(); } }, 'Apply fix'))))));
+          r.issues.slice().sort((a, b) => order[a.sev] - order[b.sev]).forEach((it) => body.appendChild(issueRow(it, { canFix: (i) => SAFE.includes(i.fix.type), action: (i) => { p.claim = E.applyFix(p.claim, i); ta.value = results.map((x) => x.claim ? serialize(x) : x.raw).join('\n'); analyze(); } })));
           body.appendChild(h('div', { class: 'row', style: 'margin-top:16px' }, h('button', { class: 'btn ghost sm', onclick: () => { store.set('claim', p.claim); location.hash = '#/inspect'; } }, 'Open in full Inspector →')));
           row.appendChild(body);
         }
@@ -345,7 +368,7 @@
     ta.addEventListener('input', () => { clearTimeout(ta._t); ta._t = setTimeout(analyze, 250); });
     const file = h('input', { type: 'file', accept: '.txt,.csv,.tsv', style: 'display:none', onchange: (e) => { const f = e.target.files[0]; if (!f) return; f.text().then((t) => { ta.value = t; analyze(); }); } });
     const root = h('div', null,
-      pageHead('02 · Batch', 'Fifteen claims. One pass.', 'Paste the day’s claims, one per line. You get a ranked worklist - blocked claims first - with a one-click bulk fix for the safe corrections (modifier 25, QW, units, new/established code, Medicare vaccine admin codes) and an export for your biller.'),
+      pageHead('02 · Batch', 'Fifteen claims. One pass.', 'Paste the day, one claim per line. Worst first, safe fixes in one click, CSV out.'),
       h('div', { class: 'grid' },
         h('div', { class: 'c8' }, h('div', { class: 'card' },
           h('div', { class: 'row between', style: 'margin-bottom:12px' }, h('h3', { class: 'h3' }, 'Claims'), h('div', { class: 'row' },
@@ -692,5 +715,6 @@
     r.dataset.theme = dark ? 'light' : 'dark'; store.set('theme', r.dataset.theme);
   });
   const th = store.get('theme', null); if (th) document.documentElement.dataset.theme = th;
+  document.getElementById('theme').innerHTML = CI.ICON.sun;
   route();
 })();

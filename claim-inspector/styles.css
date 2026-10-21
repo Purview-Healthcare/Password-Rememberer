@@ -219,3 +219,43 @@ details.fold .inner { padding: 0 0 var(--s4); }
 mark { background: var(--lime); color: var(--ink); border-radius: 3px; padding: 0 2px; }
 @media print { .top, .nav, .footer, .btn, .search { display: none !important; } body { background: #fff; } .card { box-shadow: none; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+
+/* ---- Icon kit & scannable findings ---- */
+.ico { display: inline-flex; width: 18px; height: 18px; flex: none; vertical-align: middle; }
+.ico svg { width: 100%; height: 100%; }
+.ico.big { width: 28px; height: 28px; color: var(--violet); }
+.tool.wide .ico.big { color: var(--lime); }
+.ico.sev { width: 20px; height: 20px; margin-top: 2px; }
+.ico.sev.error { color: var(--red); } .ico.sev.warn { color: #E5A93C; } .ico.sev.info { color: var(--violet); } .ico.sev.ok { color: var(--lime); }
+.nav a { display: inline-flex; align-items: center; gap: 8px; }
+.nav a .ico { width: 16px; height: 16px; color: var(--muted); }
+.nav a[aria-current="page"] .ico { color: var(--lime); }
+.btn .ico { width: 16px; height: 16px; }
+#theme { width: 40px; padding: 0; } #theme .ico, #theme svg { width: 18px; height: 18px; }
+.tool { position: relative; }
+.tool .go { position: absolute; right: 20px; bottom: 20px; width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center; background: var(--violet-t); color: var(--violet); transition: transform .18s; }
+.tool .go .ico { width: 16px; height: 16px; }
+.tool:hover .go { transform: translateX(3px); }
+.tool.wide .go { background: var(--lime); color: var(--ink); }
+.issue { grid-template-columns: 20px 1fr; }
+.issue .ititle { all: unset; cursor: pointer; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+.issue .ititle b { font-family: var(--f-head); font-weight: 600; }
+.issue .ititle:hover b { color: var(--violet); }
+.issue .ititle:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; border-radius: 6px; }
+.issue .why { margin: 8px 0 0; font-size: 13px; color: var(--text-2); max-width: 60ch; }
+.issue.ondark { border-color: #1F2937; }
+.issue.ondark .ititle b { color: #F2F4F7; } .issue.ondark .ititle:hover b { color: var(--lime); }
+.issue.ondark .why { color: #B6BCC8; }
+.pill.where { padding: 0 8px; font-size: 11px; }
+.card.dark .pill.where { border-color: #2B3445; background: transparent; color: #B6BCC8; }
+.mini-findings li { align-items: center; }
+.mini-findings b { font-family: var(--f-head); font-weight: 600; font-size: 14px; }
+.gauge { position: relative; flex: none; }
+.gauge svg { width: 100%; height: 100%; }
+.gauge .gv { position: absolute; inset: 0; display: grid; place-items: center; font: 800 32px var(--f-display); letter-spacing: -.04em; color: #fff; }
+.tiles { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.tile { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 6px; padding: 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); transition: transform .15s, box-shadow .15s, border-color .15s; }
+.tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-h); border-color: var(--violet); }
+.tile:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+.tile b { font: 600 14px var(--f-head); margin-top: 4px; }
+.tile .ico.big { width: 24px; height: 24px; }
